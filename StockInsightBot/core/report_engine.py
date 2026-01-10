@@ -8,6 +8,7 @@ import asyncio
 from typing import Optional, Dict, Any, List
 from datetime import datetime
 from openai import AsyncOpenAI
+import httpx
 
 from config import settings
 from .data_provider import StockQuote, FinancialData, KeyIndicators, NewsItem
@@ -89,14 +90,21 @@ class StockReportEngine:
 5. 总字数控制在800-1200字"""
 
     def __init__(self):
-        """初始化报告引擎，配置OpenAI客户端"""
-        # 配置OpenAI客户端
+        """初始化报告引擎，配置AI客户端（支持 OpenAI/Groq 等兼容 API）"""
+        # 配置客户端参数
         client_kwargs = {"api_key": settings.openai_api_key}
+        
+        # 设置 API Base URL（支持 Groq 等第三方服务）
         if settings.openai_api_base:
             client_kwargs["base_url"] = settings.openai_api_base
+            # Groq 需要较长超时时间
+            client_kwargs["timeout"] = httpx.Timeout(60.0, connect=10.0)
         
         self.client = AsyncOpenAI(**client_kwargs)
         self.model = settings.openai_model
+        
+        # 判断是否使用 Groq（用于调整参数）
+        self.is_groq = "groq" in (settings.openai_api_base or "").lower()
     
     async def generate_report(
         self,
@@ -127,17 +135,22 @@ class StockReportEngine:
         user_prompt = self.REPORT_TEMPLATE.format(stock_data=stock_data)
         
         try:
-            # 调用OpenAI API生成报告
-            response = await self.client.chat.completions.create(
-                model=self.model,
-                messages=[
+            # 调用AI API生成报告（兼容 OpenAI/Groq 等）
+            api_params = {
+                "model": self.model,
+                "messages": [
                     {"role": "system", "content": self.SYSTEM_PROMPT},
                     {"role": "user", "content": user_prompt}
                 ],
-                temperature=0.7,  # 适度的创造性
-                max_tokens=2000,  # 控制输出长度
-                top_p=0.9
-            )
+                "temperature": 0.7,  # 适度的创造性
+                "max_tokens": 2500,  # 控制输出长度
+            }
+            
+            # Groq 不支持某些参数
+            if not self.is_groq:
+                api_params["top_p"] = 0.9
+            
+            response = await self.client.chat.completions.create(**api_params)
             
             report = response.choices[0].message.content
             
