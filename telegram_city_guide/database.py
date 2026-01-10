@@ -84,7 +84,8 @@ class LocationDatabase:
             ("city", 3),          # 第三 / Third
             ("country", 4),       # 最低 / Lowest
             ("nickname", 2),      # 與 area 同級 / Same as area
-            ("address_detail", 3) # 與 city 同級 / Same as city
+            ("address_detail", 3), # 與 city 同級 / Same as city
+            ("keywords", 1)       # 關鍵字（含中文）最高優先 / Keywords (incl. Chinese) highest priority
         ]
         
         best_score = 0
@@ -93,6 +94,24 @@ class LocationDatabase:
         for field_name, priority in fields_priority:
             field_value = location.get(field_name, "")
             if not field_value:
+                continue
+            
+            # 處理列表類型的欄位（如 keywords）
+            # Handle list-type fields (like keywords)
+            if isinstance(field_value, list):
+                for item in field_value:
+                    if not item:
+                        continue
+                    scores = [
+                        fuzz.ratio(query_lower, item.lower()),
+                        fuzz.partial_ratio(query_lower, item.lower()),
+                        fuzz.token_sort_ratio(query_lower, item.lower()),
+                        fuzz.token_set_ratio(query_lower, item.lower())
+                    ]
+                    max_score = max(scores)
+                    if max_score > best_score or (max_score == best_score and priority < best_priority):
+                        best_score = max_score
+                        best_priority = priority
                 continue
             
             # 使用多種模糊匹配方法取最高分
