@@ -74,7 +74,7 @@ async def main() -> None:
     # Create Bot instance
     bot = Bot(
         token=bot_token,
-        default=DefaultBotProperties(parse_mode=ParseMode.MARKDOWN_V2)
+        default=DefaultBotProperties(parse_mode=ParseMode.HTML)
     )
     
     # 建立 Dispatcher

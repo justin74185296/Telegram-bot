@@ -13,6 +13,7 @@ from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKe
 from aiogram.filters import Command, CommandStart
 from aiogram.enums import ParseMode
 from typing import List, Dict
+import html
 
 from database import get_database
 
@@ -20,127 +21,90 @@ from database import get_database
 router = Router()
 
 
-def format_location_markdown(location: Dict, detailed: bool = False) -> str:
+def escape_html(text: str) -> str:
     """
-    將地點資料格式化為 Markdown 字串
-    Format location data as Markdown string
-    
-    Args:
-        location: 地點資料字典 / Location data dictionary
-        detailed: 是否顯示詳細資訊 / Whether to show detailed info
-        
-    Returns:
-        格式化的 Markdown 字串 / Formatted Markdown string
+    轉義 HTML 特殊字元
+    Escape HTML special characters
+    """
+    if not text:
+        return ""
+    return html.escape(str(text))
+
+
+def format_location_html(location: Dict, detailed: bool = False) -> str:
+    """
+    將地點資料格式化為 HTML 字串
+    Format location data as HTML string
     """
     lines = []
     
     # 標題：暱稱或區域名稱
-    # Title: nickname or area name
     nickname = location.get("nickname", "")
     area = location.get("area", "")
     title = nickname if nickname else area
-    lines.append(f"🏷️ *{escape_markdown(title)}*")
+    lines.append(f"🏷️ <b>{escape_html(title)}</b>")
     lines.append("")
     
     # 地理位置
-    # Geographic location
     country = location.get("country", "")
     city = location.get("city", "")
     sub_area = location.get("sub_area", "")
     
-    lines.append(f"🌍 *國家/Country:* {escape_markdown(country)}")
-    lines.append(f"🏙️ *城市/City:* {escape_markdown(city)}")
-    lines.append(f"📍 *區域/Area:* {escape_markdown(area)}")
+    lines.append(f"🌍 <b>國家/Country:</b> {escape_html(country)}")
+    lines.append(f"🏙️ <b>城市/City:</b> {escape_html(city)}")
+    lines.append(f"📍 <b>區域/Area:</b> {escape_html(area)}")
     
     if sub_area:
-        lines.append(f"🔹 *子區域/Sub-area:* {escape_markdown(sub_area)}")
+        lines.append(f"🔹 <b>子區域/Sub-area:</b> {escape_html(sub_area)}")
     
     # 類型
-    # Types
     types = location.get("types", [])
     if types:
         types_str = ", ".join(types)
-        lines.append(f"🏛️ *類型/Types:* {escape_markdown(types_str)}")
+        lines.append(f"🏛️ <b>類型/Types:</b> {escape_html(types_str)}")
     
     # 價格範圍
-    # Price range
     price_range = location.get("price_range", "")
     if price_range:
-        lines.append(f"💰 *費用/Price:* {escape_markdown(price_range)}")
+        lines.append(f"💰 <b>費用/Price:</b> {escape_html(price_range)}")
     
-    # 詳細資訊（僅在 detailed=True 時顯示）
-    # Detailed info (only shown when detailed=True)
+    # 詳細資訊
     if detailed:
         address = location.get("address_detail", "")
         if address:
-            lines.append(f"📬 *地址/Address:* {escape_markdown(address)}")
+            lines.append(f"📬 <b>地址/Address:</b> {escape_html(address)}")
         
         # Telegram 聯絡方式
-        # Telegram contacts
         tg_contacts = location.get("tg_contacts", [])
         if tg_contacts:
             lines.append("")
-            lines.append("📱 *Telegram 資訊/Contacts:*")
+            lines.append("📱 <b>Telegram 資訊/Contacts:</b>")
             for contact in tg_contacts:
-                lines.append(f"  • {escape_markdown(contact)}")
+                lines.append(f"  • {escape_html(contact)}")
         
         # 備註
-        # Notes
         notes = location.get("notes", "")
         if notes:
             lines.append("")
-            lines.append(f"📝 *備註/Notes:* {escape_markdown(notes)}")
+            lines.append(f"📝 <b>備註/Notes:</b> {escape_html(notes)}")
         
         # 最後更新
-        # Last update
         last_update = location.get("last_update", "")
         if last_update:
-            lines.append(f"🕐 *更新/Updated:* {escape_markdown(last_update)}")
+            lines.append(f"🕐 <b>更新/Updated:</b> {escape_html(last_update)}")
     
     return "\n".join(lines)
-
-
-def escape_markdown(text: str) -> str:
-    """
-    轉義 Markdown 特殊字元
-    Escape Markdown special characters
-    
-    Args:
-        text: 原始字串 / Original string
-        
-    Returns:
-        轉義後的字串 / Escaped string
-    """
-    if not text:
-        return ""
-    # MarkdownV2 需要轉義的字元
-    # Characters that need escaping in MarkdownV2
-    special_chars = ['_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!']
-    for char in special_chars:
-        text = text.replace(char, f'\\{char}')
-    return text
 
 
 def create_results_keyboard(results: List[Dict], show_regions: bool = True) -> InlineKeyboardMarkup:
     """
     建立搜尋結果的內聯鍵盤
     Create inline keyboard for search results
-    
-    Args:
-        results: 搜尋結果列表 / List of search results
-        show_regions: 是否顯示地區按鈕 / Whether to show region buttons
-        
-    Returns:
-        InlineKeyboardMarkup 物件 / InlineKeyboardMarkup object
     """
     buttons = []
     
-    # 為每個結果建立詳細查看按鈕
-    # Create detail view button for each result
     for i, loc in enumerate(results):
         nickname = loc.get("nickname", loc.get("area", "Location"))
-        # 限制按鈕文字長度
-        # Limit button text length
         if len(nickname) > 25:
             nickname = nickname[:22] + "..."
         buttons.append([
@@ -150,8 +114,6 @@ def create_results_keyboard(results: List[Dict], show_regions: bool = True) -> I
             )
         ])
     
-    # 地區快捷按鈕
-    # Region shortcut buttons
     if show_regions:
         buttons.append([
             InlineKeyboardButton(text="🌏 亞洲/Asia", callback_data="region_asia"),
@@ -169,17 +131,13 @@ def create_back_keyboard() -> InlineKeyboardMarkup:
     """
     建立返回按鈕鍵盤
     Create back button keyboard
-    
-    Returns:
-        InlineKeyboardMarkup 物件 / InlineKeyboardMarkup object
     """
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="🔙 返回/Back", callback_data="back")]
     ])
 
 
-# 儲存最近搜尋結果（簡單的記憶體快取）
-# Store recent search results (simple in-memory cache)
+# 儲存最近搜尋結果
 _recent_results: Dict[int, List[Dict]] = {}
 
 
@@ -187,147 +145,119 @@ _recent_results: Dict[int, List[Dict]] = {}
 async def cmd_start(message: Message) -> None:
     """
     處理 /start 指令
-    Handle /start command
     """
     welcome_text = """
-🌍 *歡迎使用全球城市指南 Bot\\!*
-*Welcome to Global City Guide Bot\\!*
+🌍 <b>歡迎使用全球城市指南 Bot!</b>
+<b>Welcome to Global City Guide Bot!</b>
 
 這是一個用於學習程式設計的示範 Bot，展示：
-This is a demo bot for learning programming, demonstrating:
 
-• 🔍 模糊字串匹配 \\(Fuzzy String Matching\\)
-• 📊 JSON 資料處理 \\(JSON Data Processing\\)
-• 🤖 aiogram 3\\.x 框架 \\(aiogram 3\\.x Framework\\)
+• 🔍 模糊字串匹配 (Fuzzy String Matching)
+• 📊 JSON 資料處理 (JSON Data Processing)
+• 🤖 aiogram 3.x 框架 (aiogram 3.x Framework)
 • ⌨️ Inline Keyboards 互動
 
-*使用方式/How to use:*
-直接輸入地點名稱即可搜尋\\!
-Just type a location name to search\\!
+<b>使用方式/How to use:</b>
+直接輸入地點名稱即可搜尋!
+Just type a location name to search!
 
-*範例輸入/Examples:*
-• `Tokyo Shibuya`
-• `Paris Eiffel`
-• `台北 101`
-• `Amsterdam Museum`
+<b>範例輸入/Examples:</b>
+• 東京 或 Tokyo
+• 巴黎 或 Paris
+• 台北101
+• 香港
 
 輸入 /help 查看更多資訊
 Type /help for more information
 
-⚠️ _此 Bot 純粹用於程式學習與實驗_
-⚠️ _This bot is for learning purposes only_
+⚠️ <i>此 Bot 純粹用於程式學習與實驗</i>
 """
-    await message.answer(welcome_text, parse_mode=ParseMode.MARKDOWN_V2)
+    await message.answer(welcome_text, parse_mode=ParseMode.HTML)
 
 
 @router.message(Command("help"))
 async def cmd_help(message: Message) -> None:
     """
     處理 /help 指令
-    Handle /help command
     """
     help_text = """
-📖 *城市指南 Bot 使用說明*
-*City Guide Bot Help*
+📖 <b>城市指南 Bot 使用說明</b>
 
-*指令列表/Commands:*
-• /start \\- 開始使用/Start
-• /help \\- 顯示此說明/Show this help
+<b>指令列表/Commands:</b>
+• /start - 開始使用
+• /help - 顯示此說明
 
-*搜尋功能/Search:*
+<b>搜尋功能/Search:</b>
 直接輸入任何地點關鍵字：
-Just type any location keyword:
-• 城市名稱 \\(City name\\)
-• 景點名稱 \\(Landmark name\\)
-• 區域名稱 \\(Area name\\)
+• 城市名稱 (如: 東京、巴黎、紐約)
+• 景點名稱 (如: 淺草寺、艾菲爾鐵塔)
+• 區域名稱 (如: 士林夜市、明洞)
 
-*搜尋範例/Search Examples:*
-• `Tokyo Senso-ji` → 東京淺草寺
-• `Paris Louvre` → 巴黎羅浮宮
-• `New York Times Square` → 紐約時代廣場
-• `香港維多利亞港` → Victoria Harbour
+<b>搜尋範例/Search Examples:</b>
+• 東京 → 東京相關景點
+• 台北101 → 台北101大樓
+• 香港 → 香港景點
+• Paris → 巴黎景點
 
-*匹配邏輯/Matching Logic:*
+<b>匹配邏輯/Matching Logic:</b>
+• 支援中英文搜尋
 • 使用模糊匹配，相似度 ≥70% 即顯示
-• 優先級：子區域 > 區域 > 城市 > 國家
-• 有 Telegram 資訊的記錄優先顯示
+• 優先級：子區域 &gt; 區域 &gt; 城市 &gt; 國家
 
-*資料來源/Data Source:*
+<b>資料來源/Data Source:</b>
 基於公開旅遊資訊與 Wikipedia 景點列表
-Based on public travel info and Wikipedia landmarks
 
-*關於 TG 欄位/About TG Field:*
-部分景點包含官方或社群 Telegram 連結
-Some locations include official/community TG links
-
-⚠️ _資料僅供學習參考，可能不完全準確_
-⚠️ _Data is for learning reference only_
+⚠️ <i>資料僅供學習參考，可能不完全準確</i>
 """
-    await message.answer(help_text, parse_mode=ParseMode.MARKDOWN_V2)
+    await message.answer(help_text, parse_mode=ParseMode.HTML)
 
 
 @router.message(F.text)
 async def handle_search(message: Message) -> None:
     """
     處理一般文字訊息（搜尋查詢）
-    Handle general text messages (search queries)
     """
     query = message.text.strip()
     
-    # 驗證輸入
-    # Validate input
-    if not query or len(query) < 2:
+    if not query or len(query) < 1:
         await message.answer(
-            "⚠️ 請輸入至少 2 個字元的地點關鍵字\n"
-            "⚠️ Please enter at least 2 characters\n\n"
-            "範例/Example: `Bangkok Temple` 或 `東京 淺草`",
-            parse_mode=ParseMode.MARKDOWN_V2
+            "⚠️ 請輸入地點關鍵字\n"
+            "⚠️ Please enter a location keyword\n\n"
+            "範例/Example: 東京、巴黎、Bangkok",
+            parse_mode=ParseMode.HTML
         )
         return
     
-    # 取得資料庫實例並搜尋
-    # Get database instance and search
     db = get_database()
     results = db.search(query, threshold=70, max_results=6)
     
     if not results:
-        # 無結果時的回覆
-        # Response when no results found
         samples = db.get_sample_locations(5)
-        samples_text = "\n".join([f"• `{s}`" for s in samples])
+        samples_text = "\n".join([f"• {s}" for s in samples])
         
         no_result_text = f"""
-❌ *無匹配記錄*
-*No matching records found*
+❌ <b>無匹配記錄</b>
 
-找不到與「{escape_markdown(query)}」相關的地點。
-No locations found for "{escape_markdown(query)}"\\. 
+找不到與「{escape_html(query)}」相關的地點。
 
 資料可能已過期，或請嘗試更精確的關鍵字。
-Data may be outdated, or try more specific keywords\\.
 
-*建議嘗試/Try these:*
+<b>建議嘗試/Try these:</b>
 {samples_text}
+
+💡 也可以試試：東京、巴黎、香港、台北
 """
-        await message.answer(no_result_text, parse_mode=ParseMode.MARKDOWN_V2)
+        await message.answer(no_result_text, parse_mode=ParseMode.HTML)
         return
     
-    # 儲存結果供後續查詢
-    # Store results for later queries
     user_id = message.from_user.id
     _recent_results[user_id] = results
     
-    # 格式化結果
-    # Format results
     if len(results) == 1:
-        # 單一結果直接顯示詳細
-        # Single result shows detailed view
-        response = format_location_markdown(results[0], detailed=True)
-        await message.answer(response, parse_mode=ParseMode.MARKDOWN_V2)
+        response = format_location_html(results[0], detailed=True)
+        await message.answer(response, parse_mode=ParseMode.HTML)
     else:
-        # 多個結果顯示摘要
-        # Multiple results show summary
-        header = f"🔍 *找到 {len(results)} 個結果*\n*Found {len(results)} results*\n\n"
+        header = f"🔍 <b>找到 {len(results)} 個結果</b>\n\n"
         
         summaries = []
         for i, loc in enumerate(results, 1):
@@ -336,22 +266,21 @@ Data may be outdated, or try more specific keywords\\.
             country = loc.get("country", "")
             has_tg = "📱" if loc.get("tg_contacts") else ""
             summaries.append(
-                f"{i}\\. *{escape_markdown(nickname)}* {has_tg}\n"
-                f"   {escape_markdown(city)}, {escape_markdown(country)}"
+                f"{i}. <b>{escape_html(nickname)}</b> {has_tg}\n"
+                f"   {escape_html(city)}, {escape_html(country)}"
             )
         
         response = header + "\n\n".join(summaries)
-        response += "\n\n_點擊下方按鈕查看詳細/Click buttons for details_"
+        response += "\n\n<i>點擊下方按鈕查看詳細</i>"
         
         keyboard = create_results_keyboard(results)
-        await message.answer(response, parse_mode=ParseMode.MARKDOWN_V2, reply_markup=keyboard)
+        await message.answer(response, parse_mode=ParseMode.HTML, reply_markup=keyboard)
 
 
 @router.callback_query(F.data.startswith("detail_"))
 async def handle_detail_callback(callback: CallbackQuery) -> None:
     """
     處理詳細查看回調
-    Handle detail view callback
     """
     await callback.answer()
     
@@ -362,21 +291,20 @@ async def handle_detail_callback(callback: CallbackQuery) -> None:
         index = int(callback.data.split("_")[1])
         if 0 <= index < len(results):
             location = results[index]
-            response = format_location_markdown(location, detailed=True)
+            response = format_location_html(location, detailed=True)
             await callback.message.edit_text(
                 response,
-                parse_mode=ParseMode.MARKDOWN_V2,
+                parse_mode=ParseMode.HTML,
                 reply_markup=create_back_keyboard()
             )
     except (ValueError, IndexError):
-        await callback.message.answer("⚠️ 無法載入詳細資訊/Cannot load details")
+        await callback.message.answer("⚠️ 無法載入詳細資訊")
 
 
 @router.callback_query(F.data.startswith("region_"))
 async def handle_region_callback(callback: CallbackQuery) -> None:
     """
     處理地區篩選回調
-    Handle region filter callback
     """
     await callback.answer()
     
@@ -392,17 +320,13 @@ async def handle_region_callback(callback: CallbackQuery) -> None:
     results = db.get_locations_by_region(region)
     
     if not results:
-        await callback.message.answer(f"該地區暫無資料/No data for this region")
+        await callback.message.answer("該地區暫無資料")
         return
     
-    # 儲存結果
-    # Store results
     user_id = callback.from_user.id
     _recent_results[user_id] = results
     
-    # 格式化結果
-    # Format results
-    header = f"📍 *{region_names.get(region, region)} 熱門景點*\n\n"
+    header = f"📍 <b>{region_names.get(region, region)} 熱門景點</b>\n\n"
     
     summaries = []
     for i, loc in enumerate(results, 1):
@@ -410,8 +334,8 @@ async def handle_region_callback(callback: CallbackQuery) -> None:
         city = loc.get("city", "")
         has_tg = "📱" if loc.get("tg_contacts") else ""
         summaries.append(
-            f"{i}\\. *{escape_markdown(nickname)}* {has_tg}\n"
-            f"   {escape_markdown(city)}"
+            f"{i}. <b>{escape_html(nickname)}</b> {has_tg}\n"
+            f"   {escape_html(city)}"
         )
     
     response = header + "\n\n".join(summaries)
@@ -419,7 +343,7 @@ async def handle_region_callback(callback: CallbackQuery) -> None:
     
     await callback.message.edit_text(
         response,
-        parse_mode=ParseMode.MARKDOWN_V2,
+        parse_mode=ParseMode.HTML,
         reply_markup=keyboard
     )
 
@@ -428,7 +352,6 @@ async def handle_region_callback(callback: CallbackQuery) -> None:
 async def handle_back_callback(callback: CallbackQuery) -> None:
     """
     處理返回按鈕回調
-    Handle back button callback
     """
     await callback.answer()
     
@@ -442,9 +365,7 @@ async def handle_back_callback(callback: CallbackQuery) -> None:
         )
         return
     
-    # 重新顯示結果列表
-    # Re-display results list
-    header = f"🔍 *找到 {len(results)} 個結果*\n*Found {len(results)} results*\n\n"
+    header = f"🔍 <b>找到 {len(results)} 個結果</b>\n\n"
     
     summaries = []
     for i, loc in enumerate(results, 1):
@@ -453,16 +374,16 @@ async def handle_back_callback(callback: CallbackQuery) -> None:
         country = loc.get("country", "")
         has_tg = "📱" if loc.get("tg_contacts") else ""
         summaries.append(
-            f"{i}\\. *{escape_markdown(nickname)}* {has_tg}\n"
-            f"   {escape_markdown(city)}, {escape_markdown(country)}"
+            f"{i}. <b>{escape_html(nickname)}</b> {has_tg}\n"
+            f"   {escape_html(city)}, {escape_html(country)}"
         )
     
     response = header + "\n\n".join(summaries)
-    response += "\n\n_點擊下方按鈕查看詳細/Click buttons for details_"
+    response += "\n\n<i>點擊下方按鈕查看詳細</i>"
     
     keyboard = create_results_keyboard(results)
     await callback.message.edit_text(
         response,
-        parse_mode=ParseMode.MARKDOWN_V2,
+        parse_mode=ParseMode.HTML,
         reply_markup=keyboard
     )
