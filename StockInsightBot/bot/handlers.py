@@ -358,7 +358,7 @@ class BotHandlers:
     async def news_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE, symbol: str = None):
         """
         处理 /news 命令
-        获取股票近期新闻
+        获取股票近期新闻，并翻译成中文
         
         参数:
             symbol: 可选，直接传入股票代码（用于回调处理）
@@ -377,11 +377,11 @@ class BotHandlers:
         
         status_msg = await self._send_message(
             update,
-            f"📰 正在获取 {symbol} 相关新闻..."
+            f"📰 正在获取 {symbol} 相关新闻并翻译成中文..."
         )
         
         try:
-            news = await self.data_provider.fetch_company_news(symbol, limit=10)
+            news = await self.data_provider.fetch_company_news(symbol, limit=5)
             
             if not news:
                 await self._edit_message(
@@ -390,20 +390,32 @@ class BotHandlers:
                 )
                 return
             
-            message = f"📰 **{symbol} 近期新闻**\n\n"
-            
+            # 构建新闻列表用于翻译
+            news_text = ""
             for i, item in enumerate(news, 1):
-                pub_date = item.published.strftime('%m-%d %H:%M') if item.published else ''
-                message += f"**{i}. {item.title}**\n"
-                if pub_date:
-                    message += f"   🕐 {pub_date}"
-                if item.source:
-                    message += f" | 📌 {item.source}"
-                message += "\n"
+                news_text += f"{i}. 标题: {item.title}\n"
                 if item.summary:
-                    summary = item.summary[:100] + "..." if len(item.summary) > 100 else item.summary
-                    message += f"   {summary}\n"
-                message += "\n"
+                    news_text += f"   摘要: {item.summary[:200]}\n"
+                news_text += "\n"
+            
+            # 更新状态
+            await self._edit_message(
+                status_msg,
+                f"📰 正在将 {symbol} 新闻翻译成中文...",
+            )
+            
+            # 使用 AI 翻译新闻
+            translated = await self._translate_news(news_text, symbol)
+            
+            # 添加时间和来源信息
+            message = f"📰 **{symbol} 近期新闻（中文翻译）**\n\n"
+            message += translated
+            message += "\n\n---\n"
+            
+            # 添加原始来源信息
+            message += "_来源：_"
+            sources = list(set([item.source for item in news if item.source]))
+            message += ", ".join(sources[:3]) if sources else "Yahoo Finance"
             
             await self._edit_message(
                 status_msg,
@@ -414,6 +426,63 @@ class BotHandlers:
         except Exception as e:
             logger.error(f"获取 {symbol} 新闻失败: {e}")
             await self._edit_message(status_msg, f"❌ 获取新闻时发生错误：{str(e)}")
+    
+    async def _translate_news(self, news_text: str, symbol: str) -> str:
+        """
+        使用 AI 翻译新闻内容为中文
+        
+        参数:
+            news_text: 英文新闻文本
+            symbol: 股票代码
+        返回:
+            翻译后的中文文本
+        """
+        try:
+            from openai import AsyncOpenAI
+            from config import settings
+            
+            client_kwargs = {"api_key": settings.openai_api_key}
+            if settings.openai_api_base:
+                client_kwargs["base_url"] = settings.openai_api_base
+            
+            client = AsyncOpenAI(**client_kwargs)
+            
+            prompt = f"""请将以下关于 {symbol} 的英文新闻翻译成中文，保持新闻的专业性和准确性。
+
+要求：
+1. 保持原有的编号格式
+2. 标题要简洁有力
+3. 摘要翻译要通顺易懂
+4. 专业术语保持准确
+
+原文：
+{news_text}
+
+请直接输出翻译结果，格式如下：
+**1. [中文标题]**
+   [中文摘要]
+
+**2. [中文标题]**
+   [中文摘要]
+...
+"""
+            
+            response = await client.chat.completions.create(
+                model=settings.openai_model,
+                messages=[
+                    {"role": "system", "content": "你是一位专业的财经新闻翻译，擅长将英文财经新闻准确翻译成中文。"},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.3,
+                max_tokens=1500
+            )
+            
+            return response.choices[0].message.content
+            
+        except Exception as e:
+            logger.error(f"翻译新闻失败: {e}")
+            # 如果翻译失败，返回原文
+            return f"（翻译失败，显示原文）\n\n{news_text}"
     
     async def callback_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """
