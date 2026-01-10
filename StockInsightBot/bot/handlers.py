@@ -355,22 +355,28 @@ class BotHandlers:
             logger.error(f"获取 {symbol} 报价失败: {e}")
             await status_msg.edit_text(f"❌ 获取行情时发生错误：{str(e)}")
     
-    async def news_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+    async def news_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE, symbol: str = None):
         """
         处理 /news 命令
         获取股票近期新闻
+        
+        参数:
+            symbol: 可选，直接传入股票代码（用于回调处理）
         """
-        if not context.args:
-            await update.message.reply_text(
-                "⚠️ 请提供股票代码\n\n"
-                "**示例：** `/news TSLA`",
-                parse_mode=constants.ParseMode.MARKDOWN
-            )
-            return
+        # 获取股票代码
+        if symbol is None:
+            if not context.args:
+                await self._send_message(
+                    update,
+                    "⚠️ 请提供股票代码\n\n"
+                    "**示例：** `/news TSLA`",
+                    parse_mode=constants.ParseMode.MARKDOWN
+                )
+                return
+            symbol = context.args[0].upper().strip()
         
-        symbol = context.args[0].upper().strip()
-        
-        status_msg = await update.message.reply_text(
+        status_msg = await self._send_message(
+            update,
             f"📰 正在获取 {symbol} 相关新闻..."
         )
         
@@ -378,7 +384,8 @@ class BotHandlers:
             news = await self.data_provider.fetch_company_news(symbol, limit=10)
             
             if not news:
-                await status_msg.edit_text(
+                await self._edit_message(
+                    status_msg,
                     f"📰 {symbol} 近期暂无相关新闻"
                 )
                 return
@@ -398,14 +405,15 @@ class BotHandlers:
                     message += f"   {summary}\n"
                 message += "\n"
             
-            await status_msg.edit_text(
+            await self._edit_message(
+                status_msg,
                 message,
                 parse_mode=constants.ParseMode.MARKDOWN
             )
             
         except Exception as e:
             logger.error(f"获取 {symbol} 新闻失败: {e}")
-            await status_msg.edit_text(f"❌ 获取新闻时发生错误：{str(e)}")
+            await self._edit_message(status_msg, f"❌ 获取新闻时发生错误：{str(e)}")
     
     async def callback_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """
@@ -432,9 +440,8 @@ class BotHandlers:
         
         elif data.startswith("news:"):
             symbol = data.split(":")[1]
-            # 模拟 /news 命令
-            context.args = [symbol]
-            await self.news_command(update, context)
+            # 直接传入股票代码
+            await self.news_command(update, context, symbol=symbol)
         
         elif data.startswith("compare:"):
             symbol = data.split(":")[1]
