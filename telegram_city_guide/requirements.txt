@@ -1,0 +1,7 @@
+# Telegram City Guide Bot - Dependencies
+# 城市指南 Bot 依賴套件
+
+aiogram>=3.4.0          # Telegram Bot framework (async)
+fuzzywuzzy>=0.18.0      # Fuzzy string matching
+python-Levenshtein>=0.25.0  # Speed up fuzzywuzzy
+python-dotenv>=1.0.0    # Environment variable management
