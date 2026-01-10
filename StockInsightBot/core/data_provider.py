@@ -603,6 +603,7 @@ class StockDataProvider:
     def _fetch_news_yfinance(self, symbol: str, limit: int) -> List[NewsItem]:
         """
         使用 yfinance 获取新闻（同步方法）
+        支持新版和旧版 yfinance 数据结构
         """
         try:
             ticker = yf.Ticker(symbol)
@@ -613,17 +614,52 @@ class StockDataProvider:
             
             result = []
             for item in news[:limit]:
-                published_time = None
-                if item.get('providerPublishTime'):
-                    published_time = datetime.fromtimestamp(item['providerPublishTime'])
-                
-                result.append(NewsItem(
-                    title=item.get('title', ''),
-                    summary=item.get('summary', '') if item.get('summary') else '',
-                    link=item.get('link', ''),
-                    published=published_time,
-                    source=item.get('publisher', '')
-                ))
+                # 新版 yfinance 数据嵌套在 content 字段中
+                if 'content' in item:
+                    content = item['content']
+                    title = content.get('title', '')
+                    summary = content.get('summary', '') or content.get('description', '')
+                    
+                    # 获取链接
+                    link = ''
+                    if content.get('canonicalUrl'):
+                        link = content['canonicalUrl'].get('url', '')
+                    
+                    # 获取发布时间
+                    published_time = None
+                    pub_date_str = content.get('pubDate') or content.get('displayTime')
+                    if pub_date_str:
+                        try:
+                            # 解析 ISO 格式时间
+                            published_time = datetime.fromisoformat(pub_date_str.replace('Z', '+00:00'))
+                        except:
+                            pass
+                    
+                    # 获取来源
+                    source = ''
+                    if content.get('provider'):
+                        source = content['provider'].get('displayName', '')
+                    
+                    result.append(NewsItem(
+                        title=title,
+                        summary=summary,
+                        link=link,
+                        published=published_time,
+                        source=source
+                    ))
+                else:
+                    # 旧版 yfinance 数据结构
+                    published_time = None
+                    if item.get('providerPublishTime'):
+                        published_time = datetime.fromtimestamp(item['providerPublishTime'])
+                    
+                    result.append(NewsItem(
+                        title=item.get('title', ''),
+                        summary=item.get('summary', '') or '',
+                        link=item.get('link', ''),
+                        published=published_time,
+                        source=item.get('publisher', '')
+                    ))
             
             return result
             
