@@ -1,0 +1,14 @@
+# Docker Compose 配置
+# 使用方式: docker-compose up -d
+
+version: '3.8'
+
+services:
+  cityguide-bot:
+    build: .
+    container_name: cityguide-bot
+    restart: always
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data:ro  # 只讀掛載資料

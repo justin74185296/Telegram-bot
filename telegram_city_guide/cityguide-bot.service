@@ -1,0 +1,26 @@
+# systemd 服務檔案
+# 複製到 /etc/systemd/system/cityguide-bot.service
+# sudo cp cityguide-bot.service /etc/systemd/system/
+# sudo systemctl daemon-reload
+# sudo systemctl enable cityguide-bot
+# sudo systemctl start cityguide-bot
+
+[Unit]
+Description=Telegram City Guide Bot
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/workspace/telegram_city_guide
+ExecStart=/usr/bin/python3 /workspace/telegram_city_guide/main.py
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+# 環境變數（或使用 .env 檔案）
+# EnvironmentFile=/workspace/telegram_city_guide/.env
+
+[Install]
+WantedBy=multi-user.target
