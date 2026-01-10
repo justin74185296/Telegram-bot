@@ -1,0 +1,21 @@
+2026-01-10 08:42:03,355 - __main__ - INFO - 📂 正在載入地點資料庫...
+2026-01-10 08:42:03,355 - __main__ - INFO - 📂 Loading location database...
+✅ 成功載入 60 筆地點資料
+✅ Successfully loaded 60 location records
+2026-01-10 08:42:03,380 - __main__ - INFO - ==================================================
+2026-01-10 08:42:03,380 - __main__ - INFO - 🤖 城市指南 Bot 正在啟動...
+2026-01-10 08:42:03,380 - __main__ - INFO - 🤖 City Guide Bot is starting...
+2026-01-10 08:42:03,380 - __main__ - INFO - 📊 已載入 60 筆地點資料
+2026-01-10 08:42:03,380 - __main__ - INFO - 📊 Loaded 60 location records
+2026-01-10 08:42:03,380 - __main__ - INFO - ==================================================
+2026-01-10 08:42:03,706 - __main__ - INFO - ✅ Bot 已成功啟動! 正在監聽訊息...
+2026-01-10 08:42:03,706 - __main__ - INFO - ✅ Bot started successfully! Listening for messages...
+2026-01-10 08:42:03,706 - __main__ - INFO - 按 Ctrl+C 停止 / Press Ctrl+C to stop
+2026-01-10 08:42:03,706 - aiogram.dispatcher - INFO - Start polling
+2026-01-10 08:42:03,803 - aiogram.dispatcher - INFO - Run polling for bot @GGwell_bot id=7616482622 - 'City_guide_man_bot'
+2026-01-10 08:42:36,709 - aiogram.event - INFO - Update id=189954082 is handled. Duration 494 ms by bot id=7616482622
+2026-01-10 08:42:40,722 - aiogram.event - INFO - Update id=189954083 is handled. Duration 303 ms by bot id=7616482622
+2026-01-10 08:42:48,983 - aiogram.event - INFO - Update id=189954084 is handled. Duration 304 ms by bot id=7616482622
+2026-01-10 08:42:51,377 - aiogram.event - INFO - Update id=189954085 is handled. Duration 547 ms by bot id=7616482622
+2026-01-10 08:43:14,723 - aiogram.event - INFO - Update id=189954086 is handled. Duration 566 ms by bot id=7616482622
+2026-01-10 08:43:18,411 - aiogram.event - INFO - Update id=189954087 is handled. Duration 631 ms by bot id=7616482622
