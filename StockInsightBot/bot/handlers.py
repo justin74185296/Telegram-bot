@@ -364,7 +364,42 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         )
     
     elif data == "menu_help":
-        await help_command(update, context)
+        # 從回調查詢中提取幫助文本並編輯消息
+        help_text = """
+📖 **StockInsightBot 使用指南**
+
+━━━━━━━━━━━━━━━━━━━━━━
+
+**📊 分析命令**
+
+`/analyze <股票代码>`
+生成完整的AI分析报告
+
+示例：
+• `/analyze TSLA` - 分析特斯拉
+• `/analyze NVDA` - 分析英伟达
+• `/analyze 0700.HK` - 分析腾讯
+
+━━━━━━━━━━━━━━━━━━━━━━
+
+**🔍 股票代码格式**
+
+| 市场 | 格式 | 示例 |
+|------|------|------|
+| 美股 | 代码 | AAPL, TSLA |
+| 港股 | 代码.HK | 0700.HK |
+| 上证 | 代码.SS | 600519.SS |
+| 深证 | 代码.SZ | 000858.SZ |
+
+━━━━━━━━━━━━━━━━━━━━━━
+
+💬 直接发送股票代码也可以快速分析！
+"""
+        await query.message.edit_text(
+            help_text,
+            parse_mode=constants.ParseMode.MARKDOWN,
+            reply_markup=create_main_menu_keyboard()
+        )
     
     elif data == "menu_popular":
         await query.message.edit_text(
