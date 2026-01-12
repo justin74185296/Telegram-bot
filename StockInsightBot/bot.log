@@ -1,0 +1,20 @@
+07:49:32 | [32mINFO[0m | utils.loggers | 日志系统初始化完成，级别: DEBUG
+07:49:32 | [32mINFO[0m | __main__ | ==================================================
+07:49:32 | [32mINFO[0m | __main__ | StockInsightBot 正在启动...
+07:49:32 | [32mINFO[0m | __main__ | ==================================================
+07:49:32 | [32mINFO[0m | __main__ | ✅ 配置验证通过
+07:49:32 | [32mINFO[0m | __main__ | 正在创建 Telegram Application...
+07:49:32 | [32mINFO[0m | __main__ | 正在设置命令和消息处理器...
+07:49:32 | [32mINFO[0m | core.data_provider | StockDataProvider 初始化完成
+07:49:32 | [32mINFO[0m | core.financial_analyzer | FinancialAnalyzer 初始化完成
+07:49:32 | [32mINFO[0m | core.report_engine | StockReportEngine 初始化完成，使用模型: deepseek-ai/DeepSeek-V3
+07:49:32 | [32mINFO[0m | bot.handlers | 所有服务初始化完成
+07:49:32 | [32mINFO[0m | bot.handlers | 所有处理器设置完成
+07:49:32 | [32mINFO[0m | __main__ | ✅ 初始化完成，机器人正在启动...
+07:49:32 | [32mINFO[0m | __main__ | 📊 AI模型: deepseek-ai/DeepSeek-V3
+07:49:32 | [32mINFO[0m | __main__ | 🌐 API端点: https://api.siliconflow.cn/v1
+07:49:32 | [32mINFO[0m | __main__ | --------------------------------------------------
+07:49:32 | [32mINFO[0m | __main__ | 机器人已准备就绪，等待用户消息...
+07:49:32 | [32mINFO[0m | __main__ | 按 Ctrl+C 停止运行
+07:49:32 | [32mINFO[0m | __main__ | --------------------------------------------------
+07:49:32 | [36mDEBUG[0m | asyncio | Using selector: EpollSelector

@@ -1,0 +1,22 @@
+# Telegram Bot 框架
+python-telegram-bot>=21.0
+
+# 股票数据获取
+yfinance>=0.2.40
+
+# AI 集成
+openai>=1.0.0
+
+# 数据处理
+pandas>=2.0.0
+numpy>=1.24.0
+
+# 缓存管理
+cachetools>=5.0.0
+
+# 配置管理
+python-dotenv>=1.0.0
+
+# HTTP 请求
+httpx>=0.25.0
+aiohttp>=3.9.0
