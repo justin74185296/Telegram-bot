@@ -18,3 +18,27 @@
 07:37:58 | [32mINFO[0m | __main__ | 按 Ctrl+C 停止运行
 07:37:58 | [32mINFO[0m | __main__ | --------------------------------------------------
 07:37:58 | [36mDEBUG[0m | asyncio | Using selector: EpollSelector
+07:46:30 | [36mDEBUG[0m | bot.handlers | 收到回调: menu_analyze
+07:46:31 | [36mDEBUG[0m | bot.handlers | 收到回调: analyze_TSLA
+07:46:32 | [32mINFO[0m | core.data_provider | 正在获取 TSLA 的实时报价...
+07:46:32 | [36mDEBUG[0m | peewee | ('CREATE TABLE IF NOT EXISTS "_cookieschema" ("strategy" VARCHAR(255) NOT NULL PRIMARY KEY, "fetch_date" DATETIME NOT NULL, "cookie_bytes" BLOB NOT NULL) WITHOUT ROWID', [])
+07:46:32 | [36mDEBUG[0m | peewee | ('SELECT "t1"."strategy", "t1"."fetch_date", "t1"."cookie_bytes" FROM "_cookieschema" AS "t1" WHERE ("t1"."strategy" = ?) LIMIT ? OFFSET ?', ['curlCffi', 1, 0])
+07:46:32 | [32mINFO[0m | core.data_provider | 成功获取 TSLA 报价: 445.01 USD
+07:46:32 | [32mINFO[0m | core.data_provider | 正在获取 TSLA 的财务数据...
+07:46:33 | [32mINFO[0m | core.data_provider | 成功获取 TSLA 财务数据
+07:46:33 | [32mINFO[0m | core.data_provider | 正在获取 TSLA 的关键指标...
+07:46:33 | [32mINFO[0m | core.data_provider | 成功获取 TSLA 关键指标
+07:46:33 | [32mINFO[0m | core.data_provider | 正在获取 TSLA 的相关新闻...
+07:46:33 | [32mINFO[0m | core.data_provider | 成功获取 TSLA 新闻 5 条
+07:46:33 | [32mINFO[0m | core.financial_analyzer | 正在为 TSLA 生成完整财务分析...
+07:46:33 | [32mINFO[0m | core.financial_analyzer | TSLA 分析完成: 盈利50 成长40 安全45 估值:明显高估
+07:46:33 | [32mINFO[0m | core.report_engine | 正在为 TSLA 生成AI分析报告...
+07:46:34 | [36mDEBUG[0m | openai._base_client | Request options: {'method': 'post', 'url': '/chat/completions', 'files': None, 'idempotency_key': 'stainless-python-retry-17b20ca8-c66c-4e56-a6b9-5ef75074690a', 'json_data': {'messages': [{'role': 'system', 'content': '你是一名严谨的买方投资分析师，擅长从海量信息中提炼关键洞察。\n\n你的分析风格：\n- 数据驱动：每个观点都要有数据支撑\n- 逻辑清晰：分析要有因果关系\n- 客观中立：不过度乐观或悲观\n- 实用导向：给出可操作的信息\n\n你必须使用中文回复，并使用Markdown格式组织报告。'}, {'role': 'user', 'content': '请基于以下数据，为 TSLA (Tesla, Inc.) 生成一份专业的投资分析报告。\n\n## 当前市场数据\n- 股票代码: TSLA\n- 公司名称: Tesla, Inc.\n- 当前价格: 445.01 USD\n- 涨跌幅: 📈 +9.21 (+2.11%)\n- 今日区间: 430.39 - 449.05\n- 52周区间: 214.25 - 498.83\n- 成交量: 67,331,456\n- 市值: 1.48万亿 USD\n- 交易所: NMS\n- 数据时间: 2026-01-12 07:46\n\n## 关键财务指标\n- 市盈率(PE): 302.73\n- 市净率(PB): 18.50\n- 市销率(PS): 15.48\n- 净资产收益率(ROE): 6.79%\n- 总资产收益率(ROA): 2.35%\n- 净利润率: 5.31%\n- 营业利润率: 6.63%\n- 营收增长率: 11.60%\n- 盈利增长率: -37.10%\n- 负债权益比: 17.08\n- 流动比率: 2.07\n- Beta系数: 1.83\n\n## 财务趋势（最近季度）\n- 总营收: 280.95亿 → 224.96亿 → 193.35亿 → 257.07亿\n  趋势: 波动 | 变化率: +9.3%\n- 净利润: 13.73亿 → 11.72亿 → 4.09亿 → 23.14亿\n  趋势: 波动 | 变化率: -40.7%\n- 毛利润: 50.54亿 → 38.78亿 → 31.53亿 → 41.79亿\n  趋势: 波动 | 变化率: +20.9%\n- 经营现金流: 62.38亿 → 25.40亿 → 21.56亿 → 48.14亿\n  趋势: 波动 | 变化率: +29.6%\n- 自由现金流: 39.90亿 → 1.46亿 → 6.64亿 → 20.34亿\n  趋势: 下降 | 变化率: +96.2%\n\n## 量化分析结果\n- 盈利能力评分: 50/100\n- 成长性评分: 40/100\n- 财务安全评分: 45/100\n- 估值水平: 明显高估\n\n核心优势:\n  ✅ 流动比率 2.07 健康，短期偿债能力强\n\n主要风险:\n  ⚠️ ROE 6.8% 偏低，盈利能力有待提升\n  ⚠️ 盈利大幅下滑 -37.1%，需警惕\n  ⚠️ 负债权益比 17.08 较高，存在财务风险\n\n## 近期相关新闻\n1. [未知] \n   来源: Unknown\n2. [未知] \n   来源: Unknown\n3. [未知] \n   来源: Unknown\n4. [未知] \n   来源: Unknown\n5. [未知] \n   来源: Unknown\n\n---\n\n请严格按照以下结构生成报告：\n\n## 📈 即时快照\n简要描述当前股价状态、关键变化和市场情绪。包含：\n- 当前价格和涨跌情况\n- 相对于52周高低点的位置\n- 成交量是否异常\n\n## 📊 财务深度解析\n分析公司的财务状况，必须包含：\n- 使用表格呈现关键指标（PE、PB、ROE等）\n- 盈利能力评估（利润率、ROE趋势）\n- 成长性分析（营收和利润增长）\n- 财务健康度（负债水平、现金流）\n\n## 📰 近期动态整合\n总结新闻要点并分析其影响：\n- 近期重要事件\n- 潜在的催化剂或风险点\n- 行业动态关联\n\n## 🔮 未来展望与风险评估\n基于数据和行业逻辑，列出：\n- **上行驱动因素**（2-3个）\n- **下行风险因素**（2-3个）\n- 关键观察指标\n\n## 💎 核心结论\n用3个要点总结：\n1. 投资价值判断\n2. 当前估值评估\n3. 关注建议\n\n---\n\n要求：\n1. 语言精炼专业，避免模糊表述\n2. 重要数据需注明来源时间\n3. 使用emoji增强可读性\n4. 报告长度控制在800-1200字'}], 'model': 'deepseek-ai/DeepSeek-V3', 'max_tokens': 2000, 'temperature': 0.7}}
+07:46:34 | [36mDEBUG[0m | openai._base_client | Sending HTTP Request: POST https://api.siliconflow.cn/v1/chat/completions
+07:47:30 | [36mDEBUG[0m | openai._base_client | HTTP Response: POST https://api.siliconflow.cn/v1/chat/completions "200 OK" Headers({'date': 'Mon, 12 Jan 2026 07:47:30 GMT', 'content-type': 'application/json; charset=utf-8', 'transfer-encoding': 'chunked', 'connection': 'keep-alive', 'content-encoding': 'gzip', 'vary': 'Accept-Encoding', 'x-siliconcloud-trace-id': 'ti_s5xk809zz6z0hgu7xj'})
+07:47:30 | [36mDEBUG[0m | openai._base_client | request_id: None
+07:47:30 | [32mINFO[0m | core.report_engine | TSLA AI报告生成完成，长度: 1875 字符
+07:47:30 | [32mINFO[0m | bot.handlers | 成功为用户 7444991605 生成 TSLA 分析报告
+07:47:39 | [36mDEBUG[0m | bot.handlers | 收到回调: news_TSLA
+07:47:39 | [32mINFO[0m | core.data_provider | 正在获取 TSLA 的相关新闻...
+07:47:39 | [32mINFO[0m | core.data_provider | 成功获取 TSLA 新闻 10 条
