@@ -287,15 +287,50 @@ class StockDataProvider:
             
             news_items = []
             for item in news_data[:limit]:
+                # yfinance 1.0+ 新格式：数据在 'content' 字段内
+                content = item.get('content', item)
+                
+                # 解析发布时间
                 published_time = None
-                if 'providerPublishTime' in item:
-                    published_time = datetime.fromtimestamp(item['providerPublishTime'])
+                pub_date = content.get('pubDate') or item.get('providerPublishTime')
+                if pub_date:
+                    try:
+                        if isinstance(pub_date, str):
+                            # ISO 格式时间字符串
+                            from datetime import datetime as dt
+                            published_time = dt.fromisoformat(pub_date.replace('Z', '+00:00'))
+                        else:
+                            # Unix 时间戳
+                            published_time = datetime.fromtimestamp(pub_date)
+                    except:
+                        pass
+                
+                # 获取标题和摘要
+                title = content.get('title', '') or item.get('title', '')
+                summary = content.get('summary', '') or content.get('description', '') or title
+                
+                # 获取 URL
+                url = ''
+                canonical = content.get('canonicalUrl', {})
+                if isinstance(canonical, dict):
+                    url = canonical.get('url', '')
+                elif isinstance(canonical, str):
+                    url = canonical
+                if not url:
+                    url = item.get('link', '')
+                
+                # 获取来源
+                provider = content.get('provider', {})
+                if isinstance(provider, dict):
+                    publisher = provider.get('displayName', 'Unknown')
+                else:
+                    publisher = item.get('publisher', 'Unknown')
                 
                 news_items.append(NewsItem(
-                    title=item.get('title', ''),
-                    summary=item.get('summary', item.get('title', '')),
-                    url=item.get('link', ''),
-                    publisher=item.get('publisher', 'Unknown'),
+                    title=title,
+                    summary=summary,
+                    url=url,
+                    publisher=publisher,
                     published_time=published_time
                 ))
             
