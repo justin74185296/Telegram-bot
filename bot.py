@@ -46,6 +46,12 @@ def build_reply(text):
 
 
 def run_bot(token):
+    _api_request(
+        token,
+        "deleteWebhook",
+        params={"drop_pending_updates": True},
+        timeout=10,
+    )
     offset = None
     while True:
         try:
