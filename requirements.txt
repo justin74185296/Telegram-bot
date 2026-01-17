@@ -1,0 +1,5 @@
+# 小紅書童裝供應商爬蟲依賴
+playwright>=1.40.0
+requests>=2.31.0
+openpyxl>=3.1.2
+pandas>=2.0.0
