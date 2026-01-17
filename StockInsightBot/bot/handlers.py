@@ -30,7 +30,9 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     /start 命令處理
     發送歡迎信息和功能介紹
     """
-    welcome_message = """
+    logger.info(f"收到 /start 命令 - 用戶: {update.effective_user.id}")
+    try:
+        welcome_message = """
 🤖 **歡迎使用 StockInsightBot！**
 
 我是您的專業股票分析助手，可以幫您：
@@ -51,11 +53,15 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 點擊下方按鈕快速開始 👇
 """
-    await update.message.reply_text(
-        welcome_message,
-        parse_mode=ParseMode.MARKDOWN,
-        reply_markup=get_start_keyboard()
-    )
+        await update.message.reply_text(
+            welcome_message,
+            parse_mode=ParseMode.MARKDOWN,
+            reply_markup=get_start_keyboard()
+        )
+        logger.info(f"已回覆 /start - 用戶: {update.effective_user.id}")
+    except Exception as e:
+        logger.error(f"/start 命令錯誤: {e}", exc_info=True)
+        await update.message.reply_text("❌ 發生錯誤，請稍後再試")
 
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -63,7 +69,9 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     /help 命令處理
     顯示詳細使用說明
     """
-    help_message = """
+    logger.info(f"收到 /help 命令 - 用戶: {update.effective_user.id}")
+    try:
+        help_message = """
 📖 **StockInsightBot 使用指南**
 
 **命令列表：**
@@ -90,7 +98,11 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 • 可點擊「刷新報告」獲取最新數據
 • 支持美股、港股、A股代碼
 """
-    await update.message.reply_text(help_message, parse_mode=ParseMode.MARKDOWN)
+        await update.message.reply_text(help_message, parse_mode=ParseMode.MARKDOWN)
+        logger.info(f"已回覆 /help - 用戶: {update.effective_user.id}")
+    except Exception as e:
+        logger.error(f"/help 命令錯誤: {e}", exc_info=True)
+        await update.message.reply_text("❌ 發生錯誤，請稍後再試")
 
 
 async def analyze_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -114,24 +126,29 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     處理普通文字消息
     嘗試識別股票代碼
     """
-    text = update.message.text.strip().upper()
-    
-    # 檢查是否為有效的股票代碼格式
-    # 美股: 1-5 個字母
-    # 港股: 4 位數字
-    # A股: 6 位數字
-    if re.match(r'^[A-Z]{1,5}$', text) or re.match(r'^\d{4,6}$', text):
-        await generate_analysis(update, text)
-    else:
-        await update.message.reply_text(
-            "🤔 無法識別的股票代碼\n\n"
-            "請輸入有效的股票代碼，例如：\n"
-            "• 美股：AAPL, TSLA\n"
-            "• 港股：0700\n"
-            "• A股：600519\n\n"
-            "或使用 `/help` 查看幫助",
-            parse_mode=ParseMode.MARKDOWN
-        )
+    logger.info(f"收到訊息: '{update.message.text}' - 用戶: {update.effective_user.id}")
+    try:
+        text = update.message.text.strip().upper()
+        
+        # 檢查是否為有效的股票代碼格式
+        # 美股: 1-5 個字母
+        # 港股: 4 位數字
+        # A股: 6 位數字
+        if re.match(r'^[A-Z]{1,5}$', text) or re.match(r'^\d{4,6}$', text):
+            await generate_analysis(update, text)
+        else:
+            await update.message.reply_text(
+                "🤔 無法識別的股票代碼\n\n"
+                "請輸入有效的股票代碼，例如：\n"
+                "• 美股：AAPL, TSLA\n"
+                "• 港股：0700\n"
+                "• A股：600519\n\n"
+                "或使用 `/help` 查看幫助",
+                parse_mode=ParseMode.MARKDOWN
+            )
+    except Exception as e:
+        logger.error(f"處理訊息錯誤: {e}", exc_info=True)
+        await update.message.reply_text("❌ 發生錯誤，請稍後再試")
 
 
 async def generate_analysis(update: Update, symbol: str):
