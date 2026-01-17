@@ -1,0 +1,12 @@
+# 小紅書童裝供應商爬蟲依賴
+
+# 網頁爬蟲 (xhs_scraper.py)
+playwright>=1.40.0
+requests>=2.31.0
+openpyxl>=3.1.2
+pandas>=2.0.0
+
+# Mac App 自動化 (xhs_mac_messenger.py)
+pyautogui>=0.9.54
+pillow>=10.0.0
+pyobjc-framework-Quartz>=10.0  # Mac 專用
