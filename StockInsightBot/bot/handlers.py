@@ -4,6 +4,7 @@ Telegram Bot 命令和消息處理器
 """
 import re
 import asyncio
+import functools
 from telegram import Update, Bot
 from telegram.ext import (
     Application,
@@ -182,8 +183,11 @@ async def perform_analysis(update: Update, symbol: str, message_to_edit=None) ->
         # 顯示「正在輸入」狀態
         await update.effective_chat.send_action(ChatAction.TYPING)
         
-        # 獲取完整數據
-        data = data_provider.get_full_analysis_data(symbol)
+        # 獲取完整數據（在線程池中運行以避免阻塞事件循環）
+        loop = asyncio.get_event_loop()
+        data = await loop.run_in_executor(
+            None, functools.partial(data_provider.get_full_analysis_data, symbol)
+        )
         
         # 檢查是否有錯誤
         if "error" in data.get("quote", {}):
@@ -213,12 +217,42 @@ async def perform_analysis(update: Update, symbol: str, message_to_edit=None) ->
         
     except Exception as e:
         logger.error(f"分析失敗 {symbol}: {e}")
-        await status_message.edit_text(
-            f"❌ 分析 **{symbol}** 時發生錯誤\n\n"
-            f"錯誤詳情: {str(e)}\n\n"
-            "請稍後再試",
-            parse_mode=ParseMode.MARKDOWN
+        try:
+            await status_message.edit_text(
+                f"❌ 分析 {symbol} 時發生錯誤\n\n"
+                f"錯誤詳情: {str(e)}\n\n"
+                "請稍後再試"
+            )
+        except Exception as edit_err:
+            logger.error(f"編輯錯誤消息也失敗: {edit_err}")
+
+
+async def _safe_send(chat, text: str, parse_mode=None, reply_markup=None) -> None:
+    """
+    安全發送消息，Markdown 失敗時自動改為純文本
+
+    Args:
+        chat: Telegram Chat 對象
+        text: 要發送的文本
+        parse_mode: 解析模式
+        reply_markup: 回覆鍵盤
+    """
+    try:
+        await chat.send_message(
+            text,
+            parse_mode=parse_mode,
+            reply_markup=reply_markup
         )
+    except Exception as e:
+        if parse_mode:
+            logger.warning(f"Markdown 發送失敗，改用純文本: {e}")
+            await chat.send_message(
+                text,
+                parse_mode=None,
+                reply_markup=reply_markup
+            )
+        else:
+            raise
 
 
 async def send_long_message(chat, text: str, parse_mode=None, reply_markup=None) -> None:
@@ -234,11 +268,7 @@ async def send_long_message(chat, text: str, parse_mode=None, reply_markup=None)
     MAX_LENGTH = 4096
     
     if len(text) <= MAX_LENGTH:
-        await chat.send_message(
-            text,
-            parse_mode=parse_mode,
-            reply_markup=reply_markup
-        )
+        await _safe_send(chat, text, parse_mode=parse_mode, reply_markup=reply_markup)
         return
     
     # 分割消息
@@ -259,11 +289,7 @@ async def send_long_message(chat, text: str, parse_mode=None, reply_markup=None)
     for i, part in enumerate(parts):
         # 只在最後一部分添加按鈕
         markup = reply_markup if i == len(parts) - 1 else None
-        await chat.send_message(
-            part,
-            parse_mode=parse_mode,
-            reply_markup=markup
-        )
+        await _safe_send(chat, part, parse_mode=parse_mode, reply_markup=markup)
         await asyncio.sleep(0.5)  # 避免發送過快
 
 
@@ -387,14 +413,16 @@ async def perform_analysis_from_callback(query, symbol: str, refresh: bool = Fal
     try:
         await chat.send_action(ChatAction.TYPING)
         
-        # 獲取數據
-        data = data_provider.get_full_analysis_data(symbol)
+        # 獲取數據（在線程池中運行以避免阻塞事件循環）
+        loop = asyncio.get_event_loop()
+        data = await loop.run_in_executor(
+            None, functools.partial(data_provider.get_full_analysis_data, symbol)
+        )
         
         if "error" in data.get("quote", {}):
             await status_message.edit_text(
-                f"❌ 無法獲取 **{symbol}** 的數據\n\n"
-                f"錯誤: {data['quote'].get('error', '未知錯誤')}",
-                parse_mode=ParseMode.MARKDOWN
+                f"❌ 無法獲取 {symbol} 的數據\n\n"
+                f"錯誤: {data['quote'].get('error', '未知錯誤')}"
             )
             return
         
@@ -413,10 +441,12 @@ async def perform_analysis_from_callback(query, symbol: str, refresh: bool = Fal
         
     except Exception as e:
         logger.error(f"分析失敗 {symbol}: {e}")
-        await status_message.edit_text(
-            f"❌ 分析 **{symbol}** 時發生錯誤: {str(e)}",
-            parse_mode=ParseMode.MARKDOWN
-        )
+        try:
+            await status_message.edit_text(
+                f"❌ 分析 {symbol} 時發生錯誤: {str(e)}"
+            )
+        except Exception as edit_err:
+            logger.error(f"編輯錯誤消息也失敗: {edit_err}")
 
 
 async def show_news(query, symbol: str) -> None:
@@ -427,7 +457,10 @@ async def show_news(query, symbol: str) -> None:
     )
     
     try:
-        news = data_provider.fetch_company_news(symbol, limit=10)
+        loop = asyncio.get_event_loop()
+        news = await loop.run_in_executor(
+            None, functools.partial(data_provider.fetch_company_news, symbol, limit=10)
+        )
         
         if not news:
             await query.message.reply_text(
@@ -469,7 +502,10 @@ async def show_news(query, symbol: str) -> None:
 async def show_indicators(query, symbol: str) -> None:
     """顯示詳細指標"""
     try:
-        indicators = data_provider.fetch_key_indicators(symbol)
+        loop = asyncio.get_event_loop()
+        indicators = await loop.run_in_executor(
+            None, functools.partial(data_provider.fetch_key_indicators, symbol)
+        )
         
         if "error" in indicators:
             await query.message.reply_text(
@@ -504,7 +540,10 @@ async def show_history_options(query, symbol: str) -> None:
 async def show_history(query, symbol: str, period: str) -> None:
     """顯示歷史數據"""
     try:
-        history = data_provider.fetch_historical_data(symbol, period)
+        loop = asyncio.get_event_loop()
+        history = await loop.run_in_executor(
+            None, functools.partial(data_provider.fetch_historical_data, symbol, period)
+        )
         
         if "error" in history:
             await query.message.reply_text(
