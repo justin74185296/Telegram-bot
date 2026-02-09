@@ -8,36 +8,59 @@ Magic Bouncy Bridge - Kid-Friendly Glass Bridge Game
 靈感來自魷魚遊戲的玻璃橋，但完全沒有可怕元素，
 只有可愛的小動物、搞笑的墜落、和滿滿的鼓勵！
 
-安裝方式：pip install pygame
-執行方式：python magic_bridge_game.py
+安裝方式：
+  Python 3.14 → pip3 install pygame-ce  （社群版，支援最新 Python）
+  其他版本   → pip3 install pygame
+
+執行方式：python3 magic_bridge_game.py
 
 操作：
-  - 滑鼠點擊畫面左半邊 = 選左邊墊子
-  - 滑鼠點擊畫面右半邊 = 選右邊墊子
+  - 滑鼠點擊畫面左半邊 = 選上面的墊子
+  - 滑鼠點擊畫面右半邊 = 選下面的墊子
   - 左右方向鍵也可以選擇（備用操作）
   - 空白鍵 = 開始遊戲
   - R 鍵 = 重新開始
 
-Python 版本相容：3.10+（避免使用 3.14 可能有問題的模組）
+Python 版本相容：3.10+（含 3.14，使用 pygame-ce）
 """
 
-import pygame
+# ============================================================
+# 匯入模組（支援 pygame 和 pygame-ce 兩種）
+# ============================================================
 import random
 import math
 import sys
 import os
 
+# 嘗試匯入 pygame（支援 pygame-ce 和標準 pygame）
+try:
+    import pygame
+except ImportError:
+    print("=" * 50)
+    print("找不到 pygame 模組！")
+    print("")
+    print("請先安裝：")
+    print("  Python 3.14 → pip3 install pygame-ce")
+    print("  其他版本    → pip3 install pygame")
+    print("=" * 50)
+    sys.exit(1)
+
 # ============================================================
 # 初始化 Pygame
 # ============================================================
-os.environ['SDL_AUDIODRIVER'] = 'dummy'  # 無音效裝置時不會崩潰
-pygame.init()
-
-# 嘗試初始化音效（如果失敗也不影響遊戲）
+# 嘗試初始化音效（如果失敗也不影響遊戲，靜音模式繼續玩）
+SOUND_ENABLED = False
 try:
-    pygame.mixer.init(frequency=22050, size=-16, channels=2, buffer=512)
+    pygame.mixer.pre_init(frequency=22050, size=-16, channels=2, buffer=512)
+    pygame.init()
+    pygame.mixer.init()
     SOUND_ENABLED = True
 except Exception:
+    # 音效初始化失敗，用靜音模式
+    try:
+        pygame.init()
+    except Exception:
+        pass
     SOUND_ENABLED = False
 
 # ============================================================
