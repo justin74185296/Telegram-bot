@@ -1,0 +1,63 @@
+# ============================================================
+#  Aster Perpetuals Bot — config.yaml
+#
+#  All values here can also be set via environment variables.
+#  Priority: env var > config.yaml > code default
+# ============================================================
+
+# --- Trading Mode ---
+TRADING_MODE: "paper"             # "paper" or "live"
+
+# --- Strategy ---
+SUPPORT_RESISTANCE_METHOD: "bollinger"   # "bollinger" or "ema"
+
+# --- Symbols ---
+# (configured in config.py — edit there to add/remove pairs)
+
+# --- Timeframe & Polling (high-frequency) ---
+TIMEFRAME: "1m"                   # 1-minute candles
+OHLCV_LIMIT: 100                  # candles per fetch
+POLL_INTERVAL_SEC: 10             # seconds between polling cycles
+
+# --- Leverage ---
+LEVERAGE: 5
+# MARGIN_TYPE is always ISOLATED
+
+# --- Bollinger Bands ---
+BB_PERIOD: 20                     # Bollinger middle band SMA period
+BB_STD_DEV: 2.0                   # Standard deviation multiplier
+
+# --- Volume Filter ---
+VOLUME_AVG_PERIOD: 20             # Period for average volume calculation
+VOLUME_THRESHOLD_PCT: 30.0        # Volume must exceed avg by this %
+
+# --- RSI ---
+RSI_PERIOD: 14
+RSI_LONG_MAX: 50.0                # Enter long only if RSI < 50
+RSI_SHORT_MIN: 50.0               # Enter short only if RSI > 50
+
+# --- Risk Management ---
+RISK_PER_TRADE_PCT: 0.3           # Risk 0.3% of balance per trade
+
+# --- Trailing Stop ---
+TRAILING_STOP_INITIAL_PCT: 0.5    # Initial trailing stop distance (%)
+TRAILING_STOP_CALLBACK_PCT: 0.3   # Trailing callback rate (%)
+
+# --- Fallback Fixed SL/TP ---
+STOP_LOSS_PCT: 0.5                # Fixed SL if trailing fails
+TAKE_PROFIT_PCT: 1.5              # Fixed TP if trailing fails
+
+# --- Maximum Hold Time ---
+MAX_HOLD_SECONDS: 3600            # Force-close after 1 hour (3600s)
+
+# --- OpenClaw Supervisor ---
+MAX_CONSECUTIVE_LOSSES: 5         # Pause after N consecutive losses
+MAX_TOTAL_LOSS_PCT: 2.0           # Pause if cumulative loss > 2%
+MAX_TRADES_PER_HOUR: 40           # Pause if >40 trades in 1 hour
+
+# --- Paper Trading ---
+PAPER_INITIAL_BALANCE: 10000.0
+
+# --- Dashboard ---
+DASHBOARD_HOST: "0.0.0.0"
+DASHBOARD_PORT: 8080

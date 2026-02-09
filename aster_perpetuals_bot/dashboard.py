@@ -314,7 +314,7 @@ tbody tr:hover { background: var(--surface2); }
     <div class="card">
       <div class="card-title">風控監督狀態</div>
       <div class="card-value" id="clawStatus">--</div>
-      <div class="card-sub">連續虧損：<span id="consecLoss">0</span> / 3</div>
+      <div class="card-sub">連續虧損：<span id="consecLoss">0</span> / 5 &nbsp; 交易/時：<span id="tradesHr">0</span> / 40</div>
     </div>
   </div>
 
@@ -333,12 +333,13 @@ tbody tr:hover { background: var(--surface2); }
     <div class="card">
       <div class="card-title">使用策略</div>
       <div class="strategy-box">
-        <strong>EMA 交叉 + RSI 過濾策略</strong><br>
-        <code>做多</code>：EMA(9) 向上穿越 EMA(21) 且 RSI(14) &lt; 60<br>
-        <code>做空</code>：EMA(9) 向下穿越 EMA(21) 且 RSI(14) &gt; 40<br>
-        <code>平倉</code>：反向交叉訊號 或 觸發止損/止盈<br><br>
-        時間框架：<code>15 分鐘</code> &nbsp; 槓桿：<code>5x 逐倉</code><br>
-        單筆風險：<code>1%</code> &nbsp; 止損：<code>±1.5%</code> &nbsp; 止盈：<code>±3%</code>
+        <strong>布林帶反彈 + 成交量確認 + RSI 過濾</strong><br>
+        <code>做多</code>：價格 &lt; 布林下軌（支撐帶）+ 成交量 &gt; 均量 30% + RSI &lt; 50<br>
+        <code>做空</code>：價格 &gt; 布林上軌（壓力帶）+ 成交量 &gt; 均量 30% + RSI &gt; 50<br>
+        <code>平倉</code>：追蹤止損觸發 / 價格回到中軌 / 最長持倉 1 小時<br><br>
+        時間框架：<code>1 分鐘</code> &nbsp; 輪詢：<code>每 10 秒</code> &nbsp; 槓桿：<code>5x 逐倉</code><br>
+        單筆風險：<code>0.3%</code> &nbsp; 追蹤止損：<code>初始 0.5% / 跟隨 0.3%</code><br>
+        布林帶：<code>期數 20 / 偏差 2</code> &nbsp; 風控：<code>虧損 &lt;2% / 交易 &lt;40/小時</code>
       </div>
     </div>
   </div>
@@ -466,6 +467,7 @@ function render(d) {
   $('clawStatus').textContent = paused ? '已暫停' : '正常運行';
   $('clawStatus').className = 'card-value ' + (paused ? 'negative' : 'positive');
   $('consecLoss').textContent = d.openclaw.consecutive_losses;
+  if ($('tradesHr')) $('tradesHr').textContent = d.openclaw.trades_this_hour || 0;
 
   // -- 持倉 --
   const posKeys = Object.keys(d.positions);
@@ -500,19 +502,21 @@ function render(d) {
     for (const k of indKeys) {
       const ind = d.indicators[k];
       const rsiColor = ind.rsi > 70 ? 'var(--red)' : ind.rsi < 30 ? 'var(--green)' : 'var(--blue)';
-      const emaDiff = ind.ema_short - ind.ema_long;
-      const trend = emaDiff > 0 ? '看漲' : emaDiff < 0 ? '看跌' : '中性';
-      const trendColor = emaDiff > 0 ? 'positive' : emaDiff < 0 ? 'negative' : 'neutral';
+      const bbUpper = ind.ema_short;  // repurposed
+      const bbLower = ind.ema_long;   // repurposed
+      const price = ind.last_price;
+      const zone = price < bbLower ? '支撐帶（做多區）' : price > bbUpper ? '壓力帶（做空區）' : '通道內';
+      const zoneColor = price < bbLower ? 'positive' : price > bbUpper ? 'negative' : 'neutral';
       html += `<div class="card">
-        <div class="card-title">${ind.symbol} — <span class="${trendColor}">${trend}</span></div>
+        <div class="card-title">${ind.symbol} — <span class="${zoneColor}">${zone}</span></div>
         <div style="font-size:1.3rem;font-weight:700;margin-bottom:12px">${fmtK(ind.last_price)} <span style="font-size:0.8rem;color:var(--text2)">USDT</span></div>
         <div class="ind-row">
-          <span class="ind-label">快線 EMA(9)</span>
-          <span class="ind-val">${fmtK(ind.ema_short)}</span>
+          <span class="ind-label">布林上軌</span>
+          <span class="ind-val" style="color:var(--red)">${fmtK(bbUpper)}</span>
         </div>
         <div class="ind-row">
-          <span class="ind-label">慢線 EMA(21)</span>
-          <span class="ind-val">${fmtK(ind.ema_long)}</span>
+          <span class="ind-label">布林下軌</span>
+          <span class="ind-val" style="color:var(--green)">${fmtK(bbLower)}</span>
         </div>
         <div class="ind-row">
           <span class="ind-label">RSI(14)</span>

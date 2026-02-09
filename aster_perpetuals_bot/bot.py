@@ -2,12 +2,17 @@
 Main bot loop — orchestrates data fetching, signal generation, trade
 execution, the OpenClaw safety monitor, and the live web dashboard.
 
+High-frequency mode: 1m candles, 10-second polling interval.
+Supports trailing stops and max-hold-time forced liquidation.
+
+NOTE: For even lower latency, consider replacing the REST polling loop
+with a WebSocket stream (ccxt.pro or binance-futures-connector).
+The current architecture can be adapted by feeding candle updates from
+a WS callback into the same _process_symbol() pipeline.
+
 Usage
 -----
-    python -m aster_perpetuals_bot.bot
-
-Or:
-    python bot.py          (when run from the package directory)
+    python -m aster_perpetuals_bot
 """
 
 from __future__ import annotations
@@ -41,6 +46,7 @@ from aster_perpetuals_bot.shared_state import (
 )
 from aster_perpetuals_bot.strategy import (
     Signal,
+    check_max_hold_time,
     check_paper_sl_tp,
     execute_signal,
     generate_signal,
@@ -64,7 +70,6 @@ class _DashboardLogHandler(logging.Handler):
             pass
 
 
-# Install the handler on the root 'aster_bot' logger
 _dh = _DashboardLogHandler()
 _dh.setFormatter(logging.Formatter("%(asctime)s | %(levelname)-8s | %(message)s", "%H:%M:%S"))
 logging.getLogger("aster_bot").addHandler(_dh)
@@ -95,9 +100,10 @@ def main() -> None:
     """Run the trading bot."""
     logger.info("=" * 60)
     logger.info("  Aster Perpetuals Bot — starting up")
-    logger.info("  Mode : %s", "PAPER" if IS_PAPER_TRADING else "LIVE")
-    logger.info("  Symbols : %s", ", ".join(SYMBOLS))
-    logger.info("  Poll interval : %ds", POLL_INTERVAL_SEC)
+    logger.info("  Mode     : %s", "PAPER" if IS_PAPER_TRADING else "LIVE")
+    logger.info("  Strategy : Bollinger Band bounce + trailing stop")
+    logger.info("  Symbols  : %s", ", ".join(SYMBOLS))
+    logger.info("  Interval : %ds (high-frequency)", POLL_INTERVAL_SEC)
     logger.info("=" * 60)
 
     # --- Start web dashboard ---
@@ -125,7 +131,8 @@ def main() -> None:
     while not _shutdown_requested:
         cycle += 1
         ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
-        logger.info("--- Cycle #%d  [%s] ---", cycle, ts)
+        if cycle % 6 == 1:  # Log every ~60s instead of every 10s
+            logger.info("--- Cycle #%d  [%s] ---", cycle, ts)
         bot_state.update_cycle(cycle)
 
         # Sync OpenClaw state to dashboard
@@ -134,11 +141,9 @@ def main() -> None:
         # Check if OpenClaw has paused the bot
         if not monitor.can_trade():
             bot_state.set_status("paused")
-            logger.warning(
-                "Bot is PAUSED by OpenClaw monitor. Sleeping %ds …",
-                POLL_INTERVAL_SEC,
-            )
-            logger.info(monitor.summary())
+            if cycle % 6 == 1:
+                logger.warning("Bot PAUSED by OpenClaw. Sleeping %ds …", POLL_INTERVAL_SEC)
+                logger.info(monitor.summary())
             _sleep(POLL_INTERVAL_SEC)
             continue
 
@@ -156,8 +161,8 @@ def main() -> None:
         if paper_account:
             bot_state.set_balance(paper_account.balance)
 
-        # Print periodic summary every 10 cycles
-        if cycle % 10 == 0:
+        # Print periodic summary every 60 cycles (~10 minutes at 10s interval)
+        if cycle % 60 == 0:
             logger.info(monitor.summary())
             if paper_account:
                 logger.info("[Paper] %s", paper_account)
@@ -201,32 +206,24 @@ def _process_symbol(
     # 5. Push position to dashboard
     _sync_position(symbol, monitor)
 
-    # 6. In paper mode, check SL/TP first
+    # 6. If holding: check max hold time first
+    if pos_side is not None:
+        hold_signal = check_max_hold_time(symbol, monitor)
+        if hold_signal.action != Signal.NONE:
+            logger.warning("Max hold time exceeded for %s: %s", symbol, hold_signal)
+            _execute_and_sync(hold_signal, symbol, monitor, paper_account)
+            pos_side = get_position_side(symbol, monitor)
+
+    # 7. If holding (paper mode): check trailing stop / SL
     if IS_PAPER_TRADING and pos_side is not None:
         sltp_signal = check_paper_sl_tp(symbol, monitor)
         if sltp_signal.action != Signal.NONE:
-            logger.info("Paper SL/TP signal for %s: %s", symbol, sltp_signal)
-            new_balance = execute_signal(
-                sltp_signal,
-                symbol,
-                monitor,
-                paper_balance=paper_account.balance if paper_account else None,
-            )
-            if paper_account and new_balance is not None:
-                pnl_delta = new_balance - paper_account.balance
-                paper_account.update(pnl_delta)
-            # Sync trades after close
-            _sync_trades(monitor)
-            _sync_openclaw(monitor)
-            _sync_position(symbol, monitor)
-            if paper_account:
-                bot_state.set_balance(paper_account.balance)
-            # Re-check position after close
+            logger.info("Paper SL/TP for %s: %s", symbol, sltp_signal)
+            _execute_and_sync(sltp_signal, symbol, monitor, paper_account)
             pos_side = get_position_side(symbol, monitor)
 
-    # 7. Generate strategy signal
+    # 8. Generate strategy signal
     sig = generate_signal(df, pos_side)
-    logger.info("Signal for %s: %s", symbol, sig)
 
     # Update indicator snapshot with latest signal
     _sync_indicators(df, symbol, sig)
@@ -234,22 +231,31 @@ def _process_symbol(
     if sig.action == Signal.NONE:
         return
 
-    # 8. Execute signal
+    logger.info("Signal for %s: %s", symbol, sig)
+
+    # 9. Execute signal
     if not monitor.can_trade() and sig.is_entry:
         logger.warning("OpenClaw blocked entry signal for %s", symbol)
         return
 
+    _execute_and_sync(sig, symbol, monitor, paper_account)
+
+
+def _execute_and_sync(
+    sig: Signal,
+    symbol: str,
+    monitor: OpenClawMonitor,
+    paper_account: PaperAccount | None,
+) -> None:
+    """Execute a signal and sync all dashboard state."""
     new_balance = execute_signal(
-        sig,
-        symbol,
-        monitor,
+        sig, symbol, monitor,
         paper_balance=paper_account.balance if paper_account else None,
     )
     if paper_account and new_balance is not None and sig.is_exit:
         pnl_delta = new_balance - paper_account.balance
         paper_account.update(pnl_delta)
 
-    # 9. Sync everything to dashboard after trade
     _sync_position(symbol, monitor)
     _sync_trades(monitor)
     _sync_openclaw(monitor)
@@ -265,10 +271,15 @@ def _sync_indicators(df: pd.DataFrame, symbol: str, sig: Signal) -> None:
     """Push latest indicator values to the shared state."""
     try:
         last = df.iloc[-1]
+
+        # Get Bollinger values if available
+        bb_upper = float(last.get("bb_upper", 0)) if pd.notna(last.get("bb_upper")) else 0.0
+        bb_lower = float(last.get("bb_lower", 0)) if pd.notna(last.get("bb_lower")) else 0.0
+
         snap = IndicatorSnapshot(
             symbol=symbol,
-            ema_short=float(last.get("ema_short", 0)) if pd.notna(last.get("ema_short")) else 0.0,
-            ema_long=float(last.get("ema_long", 0)) if pd.notna(last.get("ema_long")) else 0.0,
+            ema_short=bb_upper,      # Repurpose: BB upper
+            ema_long=bb_lower,       # Repurpose: BB lower
             rsi=float(last.get("rsi", 0)) if pd.notna(last.get("rsi")) else 0.0,
             last_price=float(last.get("close", 0)),
             last_signal=sig.action,
@@ -285,7 +296,6 @@ def _sync_position(symbol: str, monitor: OpenClawMonitor) -> None:
         if IS_PAPER_TRADING:
             paper_pos = getattr(monitor, "_paper_position", None)
             if paper_pos and paper_pos.get("symbol") == symbol:
-                # Calculate unrealised PnL
                 try:
                     current_price = get_last_price(symbol)
                 except Exception:
@@ -315,18 +325,14 @@ def _sync_position(symbol: str, monitor: OpenClawMonitor) -> None:
             from aster_perpetuals_bot.exchange import get_open_position
             pos = get_open_position(symbol)
             if pos:
-                entry = float(pos.get("entryPrice", 0))
-                qty = abs(float(pos.get("contracts", 0)))
-                side = str(pos.get("side", "")).lower()
-                upnl = float(pos.get("unrealizedPnl", 0))
                 snap = PositionSnapshot(
                     symbol=symbol,
-                    side=side,
-                    entry_price=entry,
-                    quantity=qty,
+                    side=str(pos.get("side", "")).lower(),
+                    entry_price=float(pos.get("entryPrice", 0)),
+                    quantity=abs(float(pos.get("contracts", 0))),
                     sl_price=0.0,
                     tp_price=0.0,
-                    unrealised_pnl=upnl,
+                    unrealised_pnl=float(pos.get("unrealizedPnl", 0)),
                     opened_at="",
                 )
                 bot_state.set_position(symbol, snap)
@@ -337,13 +343,11 @@ def _sync_position(symbol: str, monitor: OpenClawMonitor) -> None:
 
 
 def _sync_trades(monitor: OpenClawMonitor) -> None:
-    """Push the full trade list from the monitor to the dashboard."""
+    """Push new trades from monitor to dashboard."""
     try:
-        # Only push new trades (compare lengths)
         existing = len(bot_state.trades)
-        monitor_trades = monitor.trades
-        if len(monitor_trades) > existing:
-            for t in monitor_trades[existing:]:
+        if len(monitor.trades) > existing:
+            for t in monitor.trades[existing:]:
                 snap = TradeSnapshot(
                     symbol=t.symbol,
                     side=t.side,
@@ -361,7 +365,7 @@ def _sync_trades(monitor: OpenClawMonitor) -> None:
 
 
 def _sync_openclaw(monitor: OpenClawMonitor) -> None:
-    """Push OpenClaw stats to the dashboard."""
+    """Push OpenClaw stats to dashboard."""
     try:
         wins = sum(1 for t in monitor.trades if t.pnl > 0)
         losses = sum(1 for t in monitor.trades if t.pnl < 0)
@@ -371,6 +375,7 @@ def _sync_openclaw(monitor: OpenClawMonitor) -> None:
             is_paused=monitor.is_paused,
             wins=wins,
             losses=losses,
+            trades_this_hour=monitor.trades_this_hour,
         )
     except Exception:
         logger.debug("Failed to sync openclaw", exc_info=True)
@@ -387,10 +392,6 @@ def _sleep(seconds: int) -> None:
             break
         time.sleep(1)
 
-
-# ======================================================================
-# Script entry point
-# ======================================================================
 
 if __name__ == "__main__":
     main()

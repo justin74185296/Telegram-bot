@@ -91,6 +91,7 @@ class BotState:
         self.is_openclaw_paused: bool = False
         self.win_count: int = 0
         self.loss_count: int = 0
+        self.trades_this_hour: int = 0
 
         # Errors / log buffer (last N messages)
         self.recent_logs: list[str] = []
@@ -136,6 +137,7 @@ class BotState:
         is_paused: bool,
         wins: int,
         losses: int,
+        trades_this_hour: int = 0,
     ) -> None:
         with self._lock:
             self.total_pnl = total_pnl
@@ -143,6 +145,7 @@ class BotState:
             self.is_openclaw_paused = is_paused
             self.win_count = wins
             self.loss_count = losses
+            self.trades_this_hour = trades_this_hour
 
     def add_log(self, message: str) -> None:
         with self._lock:
@@ -216,6 +219,7 @@ class BotState:
                     "losses": self.loss_count,
                     "total_trades": total_trades,
                     "win_rate": round(win_rate, 1),
+                    "trades_this_hour": self.trades_this_hour,
                 },
                 "trades": [
                     {

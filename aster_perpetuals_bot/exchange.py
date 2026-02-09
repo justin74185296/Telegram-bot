@@ -334,6 +334,74 @@ def create_take_profit_order(
 
 
 @_retry
+def create_trailing_stop_order(
+    symbol: str,
+    side: str,
+    amount: float,
+    callback_rate: float,
+    activation_price: float | None = None,
+) -> dict[str, Any]:
+    """
+    Place a TRAILING_STOP_MARKET order on Binance futures.
+
+    Parameters
+    ----------
+    symbol           : e.g. "BTC/USDT:USDT"
+    side             : "buy" or "sell" (closing side)
+    amount           : quantity in base asset
+    callback_rate    : trailing callback percentage (e.g. 0.3 for 0.3%)
+    activation_price : price at which trailing begins (optional)
+
+    Debug notes
+    -----------
+    Binance requires ``callbackRate`` as a float 0.1–5.0 (percent).
+    ``activationPrice`` is optional; if omitted, trailing starts immediately.
+    The order type must be ``TRAILING_STOP_MARKET`` and ``reduceOnly=True``.
+
+    If this call fails, the caller should fall back to a fixed SL/TP.
+    """
+    exchange = get_exchange()
+
+    # --- Build params ---
+    params: dict[str, Any] = {
+        "reduceOnly": True,
+        "type": "TRAILING_STOP_MARKET",
+        "callbackRate": callback_rate,  # e.g. 0.3
+    }
+    if activation_price is not None:
+        params["activationPrice"] = activation_price
+
+    # --- Debug logging: show exactly what we're sending ---
+    logger.info(
+        "[DEBUG] Trailing stop API call → symbol=%s  side=%s  amount=%.6f  "
+        "callbackRate=%.2f%%  activationPrice=%s  params=%s",
+        symbol, side, amount, callback_rate,
+        activation_price, params,
+    )
+
+    try:
+        order = exchange.create_order(
+            symbol, "TRAILING_STOP_MARKET", side, amount, None, params
+        )
+        logger.info(
+            "[DEBUG] Trailing stop order SUCCESS → id=%s  status=%s  "
+            "symbol=%s  side=%s  amount=%.6f  callbackRate=%.2f%%",
+            order.get("id"), order.get("status"),
+            symbol, side, amount, callback_rate,
+        )
+        return order
+    except Exception as exc:
+        logger.error(
+            "[DEBUG] Trailing stop order FAILED → symbol=%s  side=%s  "
+            "amount=%.6f  callbackRate=%.2f%%  activationPrice=%s  "
+            "error_type=%s  error=%s",
+            symbol, side, amount, callback_rate, activation_price,
+            type(exc).__name__, exc,
+        )
+        raise
+
+
+@_retry
 def cancel_all_orders(symbol: str) -> None:
     """Cancel every open order for *symbol*."""
     exchange = get_exchange()

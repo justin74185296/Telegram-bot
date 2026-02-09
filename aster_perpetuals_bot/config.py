@@ -3,10 +3,12 @@ Configuration module for Aster Perpetuals Trading Bot.
 
 All trading parameters, API credentials, and bot settings are defined here.
 API keys are loaded from environment variables for security.
+Optionally loads from config.yaml if present.
 """
 
 import os
 import logging
+from pathlib import Path
 from dotenv import load_dotenv
 
 # ---------------------------------------------------------------------------
@@ -15,9 +17,32 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # ---------------------------------------------------------------------------
+# Optional: load config.yaml overrides
+# ---------------------------------------------------------------------------
+_yaml_config: dict = {}
+_yaml_path = Path(__file__).resolve().parent.parent / "config.yaml"
+if _yaml_path.exists():
+    try:
+        import yaml  # type: ignore[import-untyped]
+        with open(_yaml_path, "r") as _f:
+            _yaml_config = yaml.safe_load(_f) or {}
+    except ImportError:
+        pass  # PyYAML not installed — skip yaml config
+
+def _cfg(key: str, default, typ=str):
+    """Resolve config value: env var → yaml → default."""
+    env = os.getenv(key)
+    if env is not None:
+        return typ(env)
+    yaml_val = _yaml_config.get(key)
+    if yaml_val is not None:
+        return typ(yaml_val)
+    return default
+
+# ---------------------------------------------------------------------------
 # Logging Configuration
 # ---------------------------------------------------------------------------
-LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
+LOG_LEVEL = _cfg("LOG_LEVEL", "INFO", str).upper()
 LOG_FORMAT = "%(asctime)s | %(levelname)-8s | %(name)-20s | %(message)s"
 LOG_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 
@@ -32,7 +57,7 @@ logger = logging.getLogger("aster_bot")
 # ---------------------------------------------------------------------------
 # Trading Mode  ("paper" = simulation, "live" = real money)
 # ---------------------------------------------------------------------------
-TRADING_MODE: str = os.getenv("TRADING_MODE", "paper").lower()
+TRADING_MODE: str = _cfg("TRADING_MODE", "paper", str).lower()
 IS_PAPER_TRADING: bool = TRADING_MODE != "live"
 
 if IS_PAPER_TRADING:
@@ -43,13 +68,11 @@ else:
 # ---------------------------------------------------------------------------
 # API Credentials
 # ---------------------------------------------------------------------------
-API_KEY: str = os.getenv("ASTER_API_KEY", "")
-API_SECRET: str = os.getenv("ASTER_API_SECRET", "")
+API_KEY: str = _cfg("ASTER_API_KEY", "", str)
+API_SECRET: str = _cfg("ASTER_API_SECRET", "", str)
 
 # Optional: Custom Aster Pro API base URL.
-# Aster Pro API is Binance-futures compatible.  If empty, ccxt default is used.
-# Reference: https://docs.asterdex.com/product/aster-perpetuals/api
-ASTER_API_URL: str = os.getenv("ASTER_API_URL", "")
+ASTER_API_URL: str = _cfg("ASTER_API_URL", "", str)
 
 # ---------------------------------------------------------------------------
 # Symbols to trade (CCXT unified perpetual format)
@@ -57,55 +80,89 @@ ASTER_API_URL: str = os.getenv("ASTER_API_URL", "")
 SYMBOLS: list[str] = ["BTC/USDT:USDT", "ETH/USDT:USDT"]
 
 # ---------------------------------------------------------------------------
-# Timeframe & Polling
+# Strategy Method
 # ---------------------------------------------------------------------------
-TIMEFRAME: str = "15m"           # K-line interval
-OHLCV_LIMIT: int = 100           # Number of candles to fetch per request
-POLL_INTERVAL_SEC: int = 60      # Seconds between each main-loop iteration
+SUPPORT_RESISTANCE_METHOD: str = _cfg("SUPPORT_RESISTANCE_METHOD", "bollinger", str)
+
+# ---------------------------------------------------------------------------
+# Timeframe & Polling  (HIGH-FREQUENCY: 1m candles, 10s polling)
+# ---------------------------------------------------------------------------
+TIMEFRAME: str = _cfg("TIMEFRAME", "1m", str)
+OHLCV_LIMIT: int = _cfg("OHLCV_LIMIT", 100, int)
+POLL_INTERVAL_SEC: int = _cfg("POLL_INTERVAL_SEC", 10, int)
 
 # ---------------------------------------------------------------------------
 # Leverage & Margin
 # ---------------------------------------------------------------------------
-LEVERAGE: int = 5                 # Fixed leverage multiplier
-MARGIN_TYPE: str = "ISOLATED"     # Isolated margin mode
+LEVERAGE: int = _cfg("LEVERAGE", 5, int)
+MARGIN_TYPE: str = "ISOLATED"
 
 # ---------------------------------------------------------------------------
-# Technical Indicator Parameters
+# Bollinger Bands Parameters
 # ---------------------------------------------------------------------------
-EMA_SHORT_PERIOD: int = 9        # Fast EMA period
-EMA_LONG_PERIOD: int = 21        # Slow EMA period
-RSI_PERIOD: int = 14             # RSI look-back period
+BB_PERIOD: int = _cfg("BB_PERIOD", 20, int)
+BB_STD_DEV: float = _cfg("BB_STD_DEV", 2.0, float)
 
-# RSI filters to avoid false signals
-RSI_LONG_MAX: float = 60.0       # Only enter long if RSI < this (not overbought)
-RSI_SHORT_MIN: float = 40.0      # Only enter short if RSI > this (not oversold)
+# ---------------------------------------------------------------------------
+# Volume Filter
+# ---------------------------------------------------------------------------
+VOLUME_AVG_PERIOD: int = _cfg("VOLUME_AVG_PERIOD", 20, int)
+VOLUME_THRESHOLD_PCT: float = _cfg("VOLUME_THRESHOLD_PCT", 30.0, float)
+# Volume must be > avg * (1 + VOLUME_THRESHOLD_PCT/100)
+
+# ---------------------------------------------------------------------------
+# RSI Parameters
+# ---------------------------------------------------------------------------
+RSI_PERIOD: int = _cfg("RSI_PERIOD", 14, int)
+RSI_LONG_MAX: float = _cfg("RSI_LONG_MAX", 50.0, float)   # Long: RSI < 50
+RSI_SHORT_MIN: float = _cfg("RSI_SHORT_MIN", 50.0, float)  # Short: RSI > 50
+
+# ---------------------------------------------------------------------------
+# EMA Parameters (kept for backward compatibility / alternative strategy)
+# ---------------------------------------------------------------------------
+EMA_SHORT_PERIOD: int = _cfg("EMA_SHORT_PERIOD", 9, int)
+EMA_LONG_PERIOD: int = _cfg("EMA_LONG_PERIOD", 21, int)
 
 # ---------------------------------------------------------------------------
 # Risk Management
 # ---------------------------------------------------------------------------
-RISK_PER_TRADE_PCT: float = 1.0  # Risk 1% of account balance per trade
-STOP_LOSS_PCT: float = 1.5       # Stop-loss distance from entry (%)
-TAKE_PROFIT_PCT: float = 3.0     # Take-profit distance from entry (%)
+RISK_PER_TRADE_PCT: float = _cfg("RISK_PER_TRADE_PCT", 0.3, float)
 
 # ---------------------------------------------------------------------------
-# OpenClaw Supervisor — automatic safety net
+# Trailing Stop Configuration
 # ---------------------------------------------------------------------------
-MAX_CONSECUTIVE_LOSSES: int = 3        # Pause after N consecutive losses
-MAX_TOTAL_LOSS_PCT: float = 5.0        # Pause if cumulative loss > this % of
-                                       # starting balance
+TRAILING_STOP_INITIAL_PCT: float = _cfg("TRAILING_STOP_INITIAL_PCT", 0.5, float)
+TRAILING_STOP_CALLBACK_PCT: float = _cfg("TRAILING_STOP_CALLBACK_PCT", 0.3, float)
+
+# Legacy fixed SL/TP (used as fallback if trailing stop fails)
+STOP_LOSS_PCT: float = _cfg("STOP_LOSS_PCT", 0.5, float)
+TAKE_PROFIT_PCT: float = _cfg("TAKE_PROFIT_PCT", 1.5, float)
+
+# ---------------------------------------------------------------------------
+# Maximum Hold Time
+# ---------------------------------------------------------------------------
+MAX_HOLD_SECONDS: int = _cfg("MAX_HOLD_SECONDS", 3600, int)  # 1 hour max
+
+# ---------------------------------------------------------------------------
+# OpenClaw Supervisor — high-frequency limits
+# ---------------------------------------------------------------------------
+MAX_CONSECUTIVE_LOSSES: int = _cfg("MAX_CONSECUTIVE_LOSSES", 5, int)
+MAX_TOTAL_LOSS_PCT: float = _cfg("MAX_TOTAL_LOSS_PCT", 2.0, float)
+MAX_TRADES_PER_HOUR: int = _cfg("MAX_TRADES_PER_HOUR", 40, int)
+
 # ---------------------------------------------------------------------------
 # Paper Trading — simulated balance
 # ---------------------------------------------------------------------------
-PAPER_INITIAL_BALANCE: float = 10_000.0  # Starting USDT for paper trading
+PAPER_INITIAL_BALANCE: float = _cfg("PAPER_INITIAL_BALANCE", 10_000.0, float)
 
 # ---------------------------------------------------------------------------
 # Dashboard
 # ---------------------------------------------------------------------------
-DASHBOARD_HOST: str = os.getenv("DASHBOARD_HOST", "0.0.0.0")
-DASHBOARD_PORT: int = int(os.getenv("DASHBOARD_PORT", "8080"))
+DASHBOARD_HOST: str = _cfg("DASHBOARD_HOST", "0.0.0.0", str)
+DASHBOARD_PORT: int = _cfg("DASHBOARD_PORT", 8080, int)
 
 # ---------------------------------------------------------------------------
 # Retry / Rate-limit Settings
 # ---------------------------------------------------------------------------
 MAX_RETRIES: int = 5
-RETRY_DELAY_BASE_SEC: float = 2.0  # Exponential back-off base (2, 4, 8 …)
+RETRY_DELAY_BASE_SEC: float = 2.0
