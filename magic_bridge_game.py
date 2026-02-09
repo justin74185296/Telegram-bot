@@ -270,39 +270,117 @@ pygame.display.set_caption("🌈 魔法跳跳橋 - Magic Bouncy Bridge 🌈")
 clock = pygame.time.Clock()
 
 # ============================================================
-# 字型設定（嘗試多種字型以支援中文）
+# 字型設定（支援 macOS / Windows / Linux 中文字型）
 # ============================================================
-def get_font(size):
-    """取得支援中文的字型"""
-    # 嘗試常見中文字型
-    font_names = [
-        "Noto Sans CJK TC", "Noto Sans CJK SC", "Noto Sans TC",
-        "WenQuanYi Micro Hei", "WenQuanYi Zen Hei",
-        "Microsoft JhengHei", "Microsoft YaHei",
-        "SimHei", "PingFang TC", "Heiti TC",
-        "AR PL UMing TW", "AR PL UKai TW",
-        "Source Han Sans TC", "Source Han Sans SC",
-        "Droid Sans Fallback",
-    ]
-    for name in font_names:
+import warnings as _warnings
+import platform as _platform
+
+# 暫時關閉 pygame 字型警告（找不到字型時不會刷滿螢幕）
+_warnings.filterwarnings("ignore", category=UserWarning, module="pygame")
+
+# 快取：找到的中文字型路徑或名稱（只搜尋一次）
+_cached_chinese_font_path = None
+_font_search_done = False
+
+
+def _find_chinese_font():
+    """
+    搜尋系統中文字型（只執行一次，結果快取）
+    優先嘗試直接從檔案路徑載入（最快、最可靠）
+    """
+    global _cached_chinese_font_path, _font_search_done
+    if _font_search_done:
+        return _cached_chinese_font_path
+    _font_search_done = True
+
+    system = _platform.system()
+
+    # === 方法 1：直接從檔案路徑載入（最可靠） ===
+    font_file_paths = []
+
+    if system == "Darwin":  # macOS
+        font_file_paths = [
+            # macOS 內建中文字型（幾乎所有 Mac 都有）
+            "/System/Library/Fonts/PingFang.ttc",
+            "/System/Library/Fonts/STHeiti Light.ttc",
+            "/System/Library/Fonts/STHeiti Medium.ttc",
+            "/Library/Fonts/Arial Unicode.ttf",
+            "/System/Library/Fonts/Hiragino Sans GB.ttc",
+            "/System/Library/Fonts/Supplemental/Songti.ttc",
+            "/System/Library/Fonts/Supplemental/STHeiti Light.ttc",
+            "/System/Library/Fonts/Supplemental/STHeiti Medium.ttc",
+            "/System/Library/Fonts/Supplemental/Hiragino Sans GB W3.otf",
+        ]
+    elif system == "Windows":
+        font_file_paths = [
+            "C:/Windows/Fonts/msjh.ttc",      # 微軟正黑體
+            "C:/Windows/Fonts/msyh.ttc",       # 微軟雅黑
+            "C:/Windows/Fonts/simhei.ttf",     # 黑體
+            "C:/Windows/Fonts/simsun.ttc",     # 宋體
+        ]
+    else:  # Linux
+        font_file_paths = [
+            "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+            "/usr/share/fonts/noto-cjk/NotoSansCJK-Regular.ttc",
+            "/usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf",
+            "/usr/share/fonts/wenquanyi/wqy-microhei/wqy-microhei.ttc",
+            "/usr/share/fonts/truetype/wqy/wqy-microhei.ttc",
+        ]
+
+    for path in font_file_paths:
+        if os.path.exists(path):
+            try:
+                test_font = pygame.font.Font(path, 24)
+                test_render = test_font.render("測試", True, (255, 255, 255))
+                if test_render.get_width() > 20:
+                    _cached_chinese_font_path = path
+                    return path
+            except Exception:
+                continue
+
+    # === 方法 2：用 pygame SysFont（備用，macOS 用小寫無空格名） ===
+    if system == "Darwin":
+        sys_names = ["pingfangtc", "pingfangsc", "stheitilight", "stheitimedium",
+                     "hiraginosans", "hiraginosansgb", "applegothic"]
+    elif system == "Windows":
+        sys_names = ["microsoftjhenghei", "microsoftyahei", "simhei", "simsun"]
+    else:
+        sys_names = ["notosanscjktc", "notosanscjksc", "wenquanyimicrohei",
+                     "droidsansfallback", "notosanstc"]
+
+    for name in sys_names:
         try:
-            f = pygame.font.SysFont(name, size)
-            # 測試能否渲染中文
-            test = f.render("測試", True, WHITE)
-            if test.get_width() > 10:
-                return f
+            f = pygame.font.SysFont(name, 24)
+            test = f.render("測試", True, (255, 255, 255))
+            if test.get_width() > 20:
+                _cached_chinese_font_path = name  # 存名稱（非路徑）
+                return name
         except Exception:
             continue
-    # 如果找不到中文字型，用預設字型
+
+    return None
+
+
+def get_font(size):
+    """取得支援中文的字型（使用快取，超快）"""
+    font_ref = _find_chinese_font()
+
+    if font_ref is not None:
+        try:
+            if os.path.sep in str(font_ref) or font_ref.endswith(('.ttf', '.ttc', '.otf')):
+                # 從檔案路徑載入
+                return pygame.font.Font(font_ref, size)
+            else:
+                # 從系統字型名稱載入
+                return pygame.font.SysFont(font_ref, size)
+        except Exception:
+            pass
+
+    # 找不到中文字型，用預設字型
     return pygame.font.Font(None, size)
 
 
-def get_available_fonts():
-    """列出系統可用字型（除錯用）"""
-    return pygame.font.get_fonts()
-
-
-# 預載字型
+# 預載字型（因為有快取，只會搜尋一次字型）
 font_large = get_font(42)
 font_medium = get_font(30)
 font_small = get_font(22)
@@ -312,6 +390,10 @@ font_emoji = get_font(48)
 # 測試中文是否可顯示
 _test_surface = font_medium.render("測試中文", True, WHITE)
 CHINESE_SUPPORTED = _test_surface.get_width() > 30
+
+# 恢復警告設定
+_warnings.filterwarnings("default", category=UserWarning, module="pygame")
+
 
 # 如果中文無法顯示，提供英文替代文字
 def txt(chinese, english):
