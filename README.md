@@ -5,47 +5,36 @@
 
 ---
 
-## 📦 安裝方式
+## 📦 安裝 & 執行（超簡單！）
 
-### 第一步：下載遊戲
+### 方法一：一鍵啟動（推薦！什麼都不用裝）
 
-**方法 A：用 Git 下載（推薦）**
 ```bash
 git clone https://github.com/justin74185296/Telegram-bot.git
 cd Telegram-bot
 git checkout cursor/magic-bouncy-bridge-6031
+bash start_game.sh
 ```
 
-**方法 B：直接下載**
-到 GitHub 頁面下載 `magic_bridge_game.py` 這個檔案就好。
+腳本會自動：建虛擬環境 → 裝 pygame → 啟動遊戲 ✅
+之後每次只要 `bash start_game.sh` 就好，不用重新安裝！
 
-### 第二步：安裝 Pygame
-
-> ⚠️ **Python 3.14 使用者注意！**
-> 如果你的 Python 是 3.14 版，`pygame` 可能還沒支援。
-> 請改用 `pygame-ce`（社群版，更新比較快）：
+### 方法二：手動安裝
 
 ```bash
-# 方法 1：先試試 pygame-ce（推薦 Python 3.14 使用者）
-pip3 install pygame-ce
+git clone https://github.com/justin74185296/Telegram-bot.git
+cd Telegram-bot
+git checkout cursor/magic-bouncy-bridge-6031
 
-# 方法 2：如果上面失敗，試試標準 pygame
-pip3 install pygame
+# 建立虛擬環境（macOS Homebrew Python 必須）
+python3 -m venv .venv_game
+source .venv_game/bin/activate
 
-# 如果兩個都裝不上，建議用 Python 3.12 或 3.13：
-# brew install python@3.13
-# python3.13 -m pip install pygame
-# python3.13 magic_bridge_game.py
-```
+# 安裝 pygame（Python 3.14 用 pygame-ce）
+pip install pygame-ce
 
-### 第三步：執行遊戲 🎮
-
-```bash
-# 切到遊戲所在的資料夾
-cd Telegram-bot  # 或者你放 magic_bridge_game.py 的地方
-
-# 執行遊戲！
-python3 magic_bridge_game.py
+# 啟動遊戲！
+python magic_bridge_game.py
 ```
 
 ---
