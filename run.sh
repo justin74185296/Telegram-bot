@@ -62,9 +62,11 @@ if [ ! -f "$SCRIPT_DIR/.env" ]; then
 fi
 
 # ---- 6. Launch bot ----
+DASH_PORT="${DASHBOARD_PORT:-8080}"
 echo ""
 echo "=========================================="
 echo "  Starting bot ... (Ctrl+C to stop)"
+echo "  Dashboard: http://localhost:${DASH_PORT}"
 echo "=========================================="
 echo ""
 

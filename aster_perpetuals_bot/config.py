@@ -99,6 +99,12 @@ MAX_TOTAL_LOSS_PCT: float = 5.0        # Pause if cumulative loss > this % of
 PAPER_INITIAL_BALANCE: float = 10_000.0  # Starting USDT for paper trading
 
 # ---------------------------------------------------------------------------
+# Dashboard
+# ---------------------------------------------------------------------------
+DASHBOARD_HOST: str = os.getenv("DASHBOARD_HOST", "0.0.0.0")
+DASHBOARD_PORT: int = int(os.getenv("DASHBOARD_PORT", "8080"))
+
+# ---------------------------------------------------------------------------
 # Retry / Rate-limit Settings
 # ---------------------------------------------------------------------------
 MAX_RETRIES: int = 5

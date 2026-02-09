@@ -16,6 +16,7 @@ Built with **CCXT** (Binance-futures compatible), **pandas_ta** for indicators, 
 | **Leverage** | Fixed 5× isolated margin |
 | **OpenClaw monitor** | Auto-pause after 3 consecutive losses or >5% drawdown |
 | **Paper trading** | Full simulation mode with real market data |
+| **Web Dashboard** | Real-time browser dashboard with auto-refresh |
 | **Resilience** | Exponential-backoff retries, graceful shutdown (Ctrl+C) |
 
 ---
@@ -42,11 +43,13 @@ aster_perpetuals_bot/
 ├── __init__.py        # Package version
 ├── __main__.py        # python -m entrypoint
 ├── config.py          # All settings & env-var loading
-├── indicators.py      # EMA, RSI computation (pandas_ta)
+├── indicators.py      # EMA, RSI computation (pure pandas)
 ├── exchange.py        # CCXT wrapper (Binance futures / Aster)
 ├── risk_manager.py    # Position sizing, SL/TP, OpenClaw monitor
 ├── strategy.py        # Signal generation & trade execution
 ├── paper_engine.py    # Simulated balance tracker
+├── shared_state.py    # Thread-safe state (bot ↔ dashboard)
+├── dashboard.py       # Flask web dashboard (auto-refresh UI)
 └── bot.py             # Main loop orchestration
 ```
 
@@ -133,6 +136,24 @@ All parameters are in `aster_perpetuals_bot/config.py` and can be overridden via
 | `EMA_LONG_PERIOD` | 21 | Slow EMA |
 | `RSI_PERIOD` | 14 | RSI look-back |
 | `POLL_INTERVAL_SEC` | 60 | Seconds between iterations |
+
+---
+
+## Web Dashboard
+
+The bot includes a **built-in web dashboard** that launches automatically on startup.
+
+Open your browser to **http://localhost:8080** to see:
+
+- **Bot status** — running / paused / stopped, with cycle counter
+- **Balance & PnL** — current balance, total profit/loss, percentage change
+- **Open positions** — per-symbol with entry price, SL/TP, unrealised PnL
+- **Live indicators** — EMA(9), EMA(21), RSI(14) with visual bars, latest signal
+- **Trade history** — complete log of all executed trades with PnL
+- **OpenClaw monitor** — win rate, consecutive losses, pause status
+- **Live logs** — streaming log output in the browser
+
+The dashboard auto-refreshes every 5 seconds. Change the port via `DASHBOARD_PORT` env var.
 
 ---
 
