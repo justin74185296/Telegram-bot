@@ -82,7 +82,7 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Aster Perpetuals Bot — Dashboard</title>
+<title>Aster 永續合約機器人 — 控制台</title>
 <style>
 /* ---- Reset & Base ---- */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -284,99 +284,99 @@ tbody tr:hover { background: var(--surface2); }
 <div class="refresh-bar" id="refreshBar"></div>
 
 <header class="header">
-  <h1>Aster Perpetuals Bot</h1>
+  <h1>Aster 永續合約交易機器人</h1>
   <div class="header-right">
     <span id="tradingMode" class="badge badge-none">--</span>
-    <span><span class="status-dot gray" id="statusDot"></span><span id="statusText">Connecting…</span></span>
-    <span style="color:var(--text2)">Cycle #<span id="cycleNum">0</span></span>
+    <span><span class="status-dot gray" id="statusDot"></span><span id="statusText">連線中…</span></span>
+    <span style="color:var(--text2)">循環 #<span id="cycleNum">0</span></span>
   </div>
 </header>
 
 <div class="container">
 
-  <!-- KPI Cards -->
+  <!-- KPI 卡片 -->
   <div class="grid grid-4">
     <div class="card">
-      <div class="card-title">Balance (USDT)</div>
+      <div class="card-title">帳戶餘額 (USDT)</div>
       <div class="card-value" id="balance">--</div>
-      <div class="card-sub">Initial: <span id="initBalance">--</span></div>
+      <div class="card-sub">初始餘額：<span id="initBalance">--</span></div>
     </div>
     <div class="card">
-      <div class="card-title">Total PnL</div>
+      <div class="card-title">累計盈虧</div>
       <div class="card-value" id="totalPnl">--</div>
       <div class="card-sub" id="totalPnlPct">--</div>
     </div>
     <div class="card">
-      <div class="card-title">Win Rate</div>
+      <div class="card-title">勝率</div>
       <div class="card-value" id="winRate">--</div>
-      <div class="card-sub" id="winLoss">W: 0 / L: 0</div>
+      <div class="card-sub" id="winLoss">贏：0 / 輸：0</div>
     </div>
     <div class="card">
-      <div class="card-title">OpenClaw Status</div>
+      <div class="card-title">風控監督狀態</div>
       <div class="card-value" id="clawStatus">--</div>
-      <div class="card-sub">Consec. losses: <span id="consecLoss">0</span> / 3</div>
+      <div class="card-sub">連續虧損：<span id="consecLoss">0</span> / 3</div>
     </div>
   </div>
 
-  <!-- Positions + Strategy -->
+  <!-- 持倉 + 策略 -->
   <div class="grid grid-2">
 
-    <!-- Positions -->
+    <!-- 當前持倉 -->
     <div class="card">
-      <div class="card-title">Open Positions</div>
+      <div class="card-title">當前持倉</div>
       <div id="positionsContainer">
-        <div class="empty">No open positions</div>
+        <div class="empty">目前無持倉</div>
       </div>
     </div>
 
-    <!-- Strategy Info -->
+    <!-- 策略說明 -->
     <div class="card">
-      <div class="card-title">Strategy</div>
+      <div class="card-title">使用策略</div>
       <div class="strategy-box">
-        <strong>EMA Crossover + RSI Filter</strong><br>
-        <code>LONG</code> : EMA(9) crosses above EMA(21) &amp; RSI(14) &lt; 60<br>
-        <code>SHORT</code> : EMA(9) crosses below EMA(21) &amp; RSI(14) &gt; 40<br>
-        <code>EXIT</code> : Reverse crossover or SL/TP hit<br><br>
-        Timeframe: <code>15m</code> &nbsp; Leverage: <code>5x Isolated</code><br>
-        Risk/trade: <code>1%</code> &nbsp; SL: <code>±1.5%</code> &nbsp; TP: <code>±3%</code>
+        <strong>EMA 交叉 + RSI 過濾策略</strong><br>
+        <code>做多</code>：EMA(9) 向上穿越 EMA(21) 且 RSI(14) &lt; 60<br>
+        <code>做空</code>：EMA(9) 向下穿越 EMA(21) 且 RSI(14) &gt; 40<br>
+        <code>平倉</code>：反向交叉訊號 或 觸發止損/止盈<br><br>
+        時間框架：<code>15 分鐘</code> &nbsp; 槓桿：<code>5x 逐倉</code><br>
+        單筆風險：<code>1%</code> &nbsp; 止損：<code>±1.5%</code> &nbsp; 止盈：<code>±3%</code>
       </div>
     </div>
   </div>
 
-  <!-- Indicators per symbol -->
-  <div class="section-title">Indicators (Live)</div>
+  <!-- 即時指標 -->
+  <div class="section-title">即時技術指標</div>
   <div class="grid grid-2" id="indicatorsGrid">
-    <div class="card empty">Waiting for data…</div>
+    <div class="card empty">等待數據中…</div>
   </div>
 
-  <!-- Trade History -->
-  <div class="section-title">Trade History</div>
+  <!-- 交易歷史 -->
+  <div class="section-title">交易歷史紀錄</div>
   <div class="card" style="overflow-x:auto">
     <table>
       <thead>
         <tr>
-          <th>Time</th>
-          <th>Symbol</th>
-          <th>Side</th>
-          <th>Entry</th>
-          <th>Exit</th>
-          <th>Qty</th>
-          <th>PnL (USDT)</th>
-          <th>PnL %</th>
+          <th>時間</th>
+          <th>交易對</th>
+          <th>方向</th>
+          <th>入場價</th>
+          <th>出場價</th>
+          <th>數量</th>
+          <th>盈虧 (USDT)</th>
+          <th>盈虧 %</th>
         </tr>
       </thead>
       <tbody id="tradesBody">
-        <tr><td colspan="8" class="empty">No trades yet</td></tr>
+        <tr><td colspan="8" class="empty">尚無交易紀錄</td></tr>
       </tbody>
     </table>
   </div>
 
-  <!-- Logs -->
-  <div class="section-title">Live Logs</div>
-  <div class="log-box" id="logBox">Waiting for logs…</div>
+  <!-- 即時日誌 -->
+  <div class="section-title">即時運行日誌</div>
+  <div class="log-box" id="logBox">等待日誌中…</div>
 
   <div style="text-align:center;padding:24px;color:var(--text2);font-size:0.75rem;">
-    Auto-refresh every 5s &nbsp;|&nbsp; Last update: <span id="lastUpdate">--</span>
+    每 5 秒自動更新 &nbsp;|&nbsp; 上次更新：<span id="lastUpdate">--</span>
   </div>
 
 </div>
@@ -385,7 +385,7 @@ tbody tr:hover { background: var(--surface2); }
 const API = '/api/state';
 const REFRESH_MS = 5000;
 
-// ---- Helpers ----
+// ---- 工具函數 ----
 const $ = id => document.getElementById(id);
 const fmt = (n, d=2) => Number(n).toFixed(d);
 const fmtK = n => {
@@ -394,14 +394,31 @@ const fmtK = n => {
   return fmt(n);
 };
 const pnlClass = v => v > 0 ? 'positive' : v < 0 ? 'negative' : 'neutral';
-const sideBadge = s => `<span class="badge badge-${s === 'long' ? 'long' : s === 'short' ? 'short' : 'none'}">${s}</span>`;
+
+const sideLabel = s => {
+  if (s === 'long') return '做多';
+  if (s === 'short') return '做空';
+  if (s === 'close_long') return '平多';
+  if (s === 'close_short') return '平空';
+  if (s === 'none') return '無';
+  return s;
+};
+const sideBadge = s => `<span class="badge badge-${s === 'long' ? 'long' : s === 'short' ? 'short' : 'none'}">${sideLabel(s)}</span>`;
+
 const timeStr = iso => {
   if (!iso) return '--';
   const d = new Date(iso);
   return d.toLocaleString('zh-TW', {hour12:false, month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', second:'2-digit'});
 };
 
-// ---- Main fetch & render ----
+const statusMap = {
+  'running': '運行中',
+  'paused': '已暫停',
+  'stopped': '已停止',
+  'starting': '啟動中',
+};
+
+// ---- 主要更新 ----
 async function refresh() {
   $('refreshBar').classList.add('active');
   try {
@@ -410,51 +427,52 @@ async function refresh() {
     const d = await res.json();
     render(d);
   } catch(e) {
-    $('statusText').textContent = 'Disconnected';
+    $('statusText').textContent = '連線中斷';
     $('statusDot').className = 'status-dot red';
-    console.error('Fetch error:', e);
+    console.error('更新失敗:', e);
   }
   setTimeout(() => $('refreshBar').classList.remove('active'), 800);
 }
 
 function render(d) {
-  // -- Status --
+  // -- 狀態 --
   const st = d.bot.status;
-  $('statusText').textContent = st.charAt(0).toUpperCase() + st.slice(1);
+  $('statusText').textContent = statusMap[st] || st;
   $('statusDot').className = 'status-dot ' + (
     st === 'running' ? 'green' : st === 'paused' ? 'yellow' : st === 'stopped' ? 'red' : 'gray'
   );
-  $('tradingMode').textContent = d.bot.trading_mode.toUpperCase();
+  const modeLabel = d.bot.trading_mode === 'live' ? '實盤交易' : '模擬交易';
+  $('tradingMode').textContent = modeLabel;
   $('tradingMode').className = 'badge ' + (d.bot.trading_mode === 'live' ? 'badge-short' : 'badge-long');
   $('cycleNum').textContent = d.bot.cycle;
 
-  // -- Balance --
+  // -- 餘額 --
   $('balance').textContent = fmtK(d.balance.current);
   $('initBalance').textContent = fmt(d.balance.initial);
 
-  // -- PnL --
+  // -- 盈虧 --
   const pnl = d.balance.pnl;
   $('totalPnl').textContent = (pnl >= 0 ? '+' : '') + fmt(pnl, 4);
   $('totalPnl').className = 'card-value ' + pnlClass(pnl);
-  $('totalPnlPct').textContent = (d.balance.pnl_pct >= 0 ? '+' : '') + fmt(d.balance.pnl_pct) + '% of initial';
+  $('totalPnlPct').textContent = (d.balance.pnl_pct >= 0 ? '+' : '') + fmt(d.balance.pnl_pct) + '% (佔初始餘額)';
   $('totalPnlPct').className = 'card-sub ' + pnlClass(pnl);
 
-  // -- Win rate --
+  // -- 勝率 --
   $('winRate').textContent = d.openclaw.total_trades > 0 ? fmt(d.openclaw.win_rate,1) + '%' : '--';
-  $('winLoss').textContent = `W: ${d.openclaw.wins} / L: ${d.openclaw.losses} (${d.openclaw.total_trades} total)`;
+  $('winLoss').textContent = `贏：${d.openclaw.wins} / 輸：${d.openclaw.losses}（共 ${d.openclaw.total_trades} 筆）`;
 
-  // -- OpenClaw --
+  // -- 風控監督 --
   const paused = d.openclaw.is_paused;
-  $('clawStatus').textContent = paused ? 'PAUSED' : 'Active';
+  $('clawStatus').textContent = paused ? '已暫停' : '正常運行';
   $('clawStatus').className = 'card-value ' + (paused ? 'negative' : 'positive');
   $('consecLoss').textContent = d.openclaw.consecutive_losses;
 
-  // -- Positions --
+  // -- 持倉 --
   const posKeys = Object.keys(d.positions);
   if (posKeys.length === 0 || posKeys.every(k => !d.positions[k])) {
-    $('positionsContainer').innerHTML = '<div class="empty">No open positions</div>';
+    $('positionsContainer').innerHTML = '<div class="empty">目前無持倉</div>';
   } else {
-    let html = '<table><thead><tr><th>Symbol</th><th>Side</th><th>Entry</th><th>Qty</th><th>SL</th><th>TP</th><th>uPnL</th></tr></thead><tbody>';
+    let html = '<table><thead><tr><th>交易對</th><th>方向</th><th>入場價</th><th>數量</th><th>止損</th><th>止盈</th><th>未實現盈虧</th></tr></thead><tbody>';
     for (const k of posKeys) {
       const p = d.positions[k];
       if (!p) continue;
@@ -473,27 +491,27 @@ function render(d) {
     $('positionsContainer').innerHTML = html;
   }
 
-  // -- Indicators --
+  // -- 指標 --
   const indKeys = Object.keys(d.indicators);
   if (indKeys.length === 0) {
-    $('indicatorsGrid').innerHTML = '<div class="card empty">Waiting for data…</div>';
+    $('indicatorsGrid').innerHTML = '<div class="card empty">等待數據中…</div>';
   } else {
     let html = '';
     for (const k of indKeys) {
       const ind = d.indicators[k];
       const rsiColor = ind.rsi > 70 ? 'var(--red)' : ind.rsi < 30 ? 'var(--green)' : 'var(--blue)';
       const emaDiff = ind.ema_short - ind.ema_long;
-      const trend = emaDiff > 0 ? 'Bullish' : emaDiff < 0 ? 'Bearish' : 'Neutral';
+      const trend = emaDiff > 0 ? '看漲' : emaDiff < 0 ? '看跌' : '中性';
       const trendColor = emaDiff > 0 ? 'positive' : emaDiff < 0 ? 'negative' : 'neutral';
       html += `<div class="card">
         <div class="card-title">${ind.symbol} — <span class="${trendColor}">${trend}</span></div>
         <div style="font-size:1.3rem;font-weight:700;margin-bottom:12px">${fmtK(ind.last_price)} <span style="font-size:0.8rem;color:var(--text2)">USDT</span></div>
         <div class="ind-row">
-          <span class="ind-label">EMA(9)</span>
+          <span class="ind-label">快線 EMA(9)</span>
           <span class="ind-val">${fmtK(ind.ema_short)}</span>
         </div>
         <div class="ind-row">
-          <span class="ind-label">EMA(21)</span>
+          <span class="ind-label">慢線 EMA(21)</span>
           <span class="ind-val">${fmtK(ind.ema_long)}</span>
         </div>
         <div class="ind-row">
@@ -502,7 +520,7 @@ function render(d) {
           <span class="ind-val" style="color:${rsiColor}">${fmt(ind.rsi,1)}</span>
         </div>
         <div style="margin-top:10px;font-size:0.82rem;color:var(--text2)">
-          Signal: ${sideBadge(ind.last_signal)}
+          最新訊號：${sideBadge(ind.last_signal)}
           <span style="margin-left:6px">${ind.signal_reason || ''}</span>
         </div>
       </div>`;
@@ -510,9 +528,9 @@ function render(d) {
     $('indicatorsGrid').innerHTML = html;
   }
 
-  // -- Trades --
+  // -- 交易紀錄 --
   if (d.trades.length === 0) {
-    $('tradesBody').innerHTML = '<tr><td colspan="8" class="empty">No trades yet</td></tr>';
+    $('tradesBody').innerHTML = '<tr><td colspan="8" class="empty">尚無交易紀錄</td></tr>';
   } else {
     let html = '';
     for (const t of d.trades) {
@@ -531,7 +549,7 @@ function render(d) {
     $('tradesBody').innerHTML = html;
   }
 
-  // -- Logs --
+  // -- 日誌 --
   if (d.recent_logs && d.recent_logs.length > 0) {
     $('logBox').innerHTML = d.recent_logs.map(l =>
       l.replace(/</g,'&lt;').replace(/>/g,'&gt;')
@@ -540,11 +558,11 @@ function render(d) {
     box.scrollTop = box.scrollHeight;
   }
 
-  // -- Timestamp --
+  // -- 時間戳 --
   $('lastUpdate').textContent = new Date().toLocaleTimeString('zh-TW', {hour12:false});
 }
 
-// ---- Kick off ----
+// ---- 啟動 ----
 refresh();
 setInterval(refresh, REFRESH_MS);
 </script>
