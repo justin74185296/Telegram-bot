@@ -28,6 +28,20 @@ import struct
 import wave
 import array
 
+# ==================== 音效可用性檢查 ====================
+# 某些系統（例如 macOS + Python 3.14）可能沒有 pygame.mixer
+# 遊戲會自動偵測，沒有音效一樣可以正常玩！
+SOUND_AVAILABLE = False  # 稍後在 Game.__init__ 中嘗試初始化
+
+
+class DummySound:
+    """當音效模組不可用時，使用這個假的 Sound 物件（不會出錯）"""
+    def play(self):
+        pass
+
+    def stop(self):
+        pass
+
 # ==================== 遊戲設定（可以自由修改！）====================
 
 # 畫面大小
@@ -72,7 +86,7 @@ FPS = 60
 # ==================== 音效生成（使用程式產生簡單音效）====================
 
 def generate_wav_bytes(frequency, duration_ms, volume=0.5, wave_type='sine'):
-    """產生 WAV 格式的音效位元組資料"""
+    """產生 WAV 格式的音效位元組資料（需要 mixer 可用才有意義）"""
     sample_rate = 22050
     num_samples = int(sample_rate * duration_ms / 1000)
 
@@ -108,6 +122,8 @@ def generate_wav_bytes(frequency, duration_ms, volume=0.5, wave_type='sine'):
 
 def create_sound_go():
     """產生綠燈「GO!」快樂音效 —— 三聲快速上升嗶嗶嗶"""
+    if not SOUND_AVAILABLE:
+        return DummySound()
     sample_rate = 22050
     total_samples = int(sample_rate * 0.6)
     samples = []
@@ -152,12 +168,16 @@ def create_sound_go():
 
 def create_sound_stop():
     """產生紅燈「停～」溫柔叮聲"""
+    if not SOUND_AVAILABLE:
+        return DummySound()
     buf = generate_wav_bytes(880, 400, volume=0.3, wave_type='sine')
     return pygame.mixer.Sound(buf)
 
 
 def create_sound_win():
     """產生勝利「叮叮叮～」開心音樂"""
+    if not SOUND_AVAILABLE:
+        return DummySound()
     sample_rate = 22050
     total_duration = 1.2
     total_samples = int(sample_rate * total_duration)
@@ -209,6 +229,8 @@ def create_sound_win():
 
 def create_sound_fall():
     """產生跌倒「哇～」可愛下滑音效"""
+    if not SOUND_AVAILABLE:
+        return DummySound()
     sample_rate = 22050
     duration = 0.5
     total_samples = int(sample_rate * duration)
@@ -242,6 +264,8 @@ def create_sound_fall():
 
 def create_sound_step():
     """產生走路「噠」小腳步聲"""
+    if not SOUND_AVAILABLE:
+        return DummySound()
     buf = generate_wav_bytes(350, 80, volume=0.2, wave_type='square')
     return pygame.mixer.Sound(buf)
 
@@ -615,8 +639,18 @@ class Game:
 
     def __init__(self):
         """初始化遊戲"""
+        global SOUND_AVAILABLE
         pygame.init()
-        pygame.mixer.init(frequency=22050, size=-16, channels=1, buffer=512)
+
+        # 嘗試初始化音效模組（某些系統可能不支援）
+        try:
+            pygame.mixer.init(frequency=22050, size=-16, channels=1, buffer=512)
+            SOUND_AVAILABLE = True
+            print("🔊 音效模組載入成功！")
+        except Exception as e:
+            SOUND_AVAILABLE = False
+            print(f"🔇 音效模組無法載入（{e}），遊戲將以靜音模式執行")
+            print("   （不影響遊玩，一樣很好玩喔！）")
 
         self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
         pygame.display.set_caption("🐰 一二三木頭人！Red Light Green Light 🚦")
@@ -629,7 +663,7 @@ class Game:
         self.font_tiny = None
         self._setup_fonts()
 
-        # 音效
+        # 音效（如果 mixer 不可用，會自動使用 DummySound）
         self.sound_go = create_sound_go()
         self.sound_stop = create_sound_stop()
         self.sound_win = create_sound_win()
