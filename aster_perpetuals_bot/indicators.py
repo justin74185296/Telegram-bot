@@ -1,9 +1,9 @@
 """
 Technical indicator calculations.
 
-Uses *pandas_ta* (pure-Python, no C dependencies) so the bot is easy to
-install anywhere.  If you prefer TA-Lib, swap the implementations below
-while keeping the same function signatures.
+Uses **pure pandas** — no external TA library required.
+This ensures compatibility with all Python versions (including 3.14+)
+without needing numba or other C-compiled dependencies.
 """
 
 from __future__ import annotations
@@ -11,7 +11,6 @@ from __future__ import annotations
 import logging
 
 import pandas as pd
-import pandas_ta as ta  # noqa: F401  (imported for pd.DataFrame.ta accessor)
 
 from aster_perpetuals_bot.config import (
     EMA_LONG_PERIOD,
@@ -20,6 +19,34 @@ from aster_perpetuals_bot.config import (
 )
 
 logger = logging.getLogger("aster_bot.indicators")
+
+
+# ------------------------------------------------------------------
+# Pure-pandas indicator implementations
+# ------------------------------------------------------------------
+
+def _ema(series: pd.Series, period: int) -> pd.Series:
+    """Calculate Exponential Moving Average using pandas ewm."""
+    return series.ewm(span=period, adjust=False).mean()
+
+
+def _rsi(series: pd.Series, period: int) -> pd.Series:
+    """
+    Calculate Relative Strength Index.
+
+    RSI = 100 - (100 / (1 + RS))
+    RS  = avg_gain / avg_loss  (exponential moving average)
+    """
+    delta = series.diff()
+    gain = delta.where(delta > 0, 0.0)
+    loss = (-delta).where(delta < 0, 0.0)
+
+    avg_gain = gain.ewm(alpha=1.0 / period, min_periods=period, adjust=False).mean()
+    avg_loss = loss.ewm(alpha=1.0 / period, min_periods=period, adjust=False).mean()
+
+    rs = avg_gain / avg_loss
+    rsi = 100.0 - (100.0 / (1.0 + rs))
+    return rsi
 
 
 # ------------------------------------------------------------------
@@ -37,9 +64,9 @@ def add_indicators(df: pd.DataFrame) -> pd.DataFrame:
     if "close" not in df.columns:
         raise ValueError("DataFrame must contain a 'close' column")
 
-    df["ema_short"] = df.ta.ema(length=EMA_SHORT_PERIOD)
-    df["ema_long"] = df.ta.ema(length=EMA_LONG_PERIOD)
-    df["rsi"] = df.ta.rsi(length=RSI_PERIOD)
+    df["ema_short"] = _ema(df["close"], EMA_SHORT_PERIOD)
+    df["ema_long"] = _ema(df["close"], EMA_LONG_PERIOD)
+    df["rsi"] = _rsi(df["close"], RSI_PERIOD)
 
     logger.debug(
         "Indicators added — last row: ema_short=%.2f  ema_long=%.2f  rsi=%.2f",
