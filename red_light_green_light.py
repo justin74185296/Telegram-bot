@@ -5,7 +5,7 @@
 適合 5 歲小朋友玩的超可愛版本！
 
 安裝方式：
-    pip install pygame numpy
+    pip install pygame
 
 執行方式：
     python red_light_green_light.py
