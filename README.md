@@ -54,40 +54,56 @@ aster_perpetuals_bot/
 
 ## Quick Start
 
-### 1. Install dependencies
+### 方法一：使用啟動腳本（推薦，macOS / Linux 皆適用）
 
 ```bash
-pip install -r requirements.txt
-```
-
-### 2. Configure environment
-
-Copy the example env file and fill in your API credentials:
-
-```bash
+# 1. 複製環境變數範本並填入你的 API Key
 cp .env.example .env
+nano .env    # 或用任何編輯器
+
+# 2. 執行啟動腳本（會自動建立 venv、安裝依賴、啟動 bot）
+chmod +x run.sh
+./run.sh
 ```
 
-Edit `.env`:
+### 方法二：手動設定虛擬環境
+
+```bash
+# 1. 建立虛擬環境
+python3 -m venv venv
+
+# 2. 啟動虛擬環境
+source venv/bin/activate        # macOS / Linux
+# venv\Scripts\activate         # Windows
+
+# 3. 安裝依賴
+pip install -r requirements.txt
+
+# 4. 複製並設定環境變數
+cp .env.example .env
+nano .env
+
+# 5. 啟動 bot
+python -m aster_perpetuals_bot
+```
+
+> **注意**：macOS Homebrew 管理的 Python 不允許直接 `pip install`，  
+> **必須**先建立虛擬環境（venv），這是 [PEP 668](https://peps.python.org/pep-0668/) 的要求。
+
+### 環境變數設定
+
+編輯 `.env` 檔案：
 
 ```dotenv
 ASTER_API_KEY=your_api_key_here
 ASTER_API_SECRET=your_api_secret_here
-TRADING_MODE=paper          # "paper" or "live"
-# ASTER_API_URL=https://pro-api.asterdex.com  # optional custom endpoint
+TRADING_MODE=paper          # "paper" 模擬模式 / "live" 真實交易
+# ASTER_API_URL=https://pro-api.asterdex.com  # 可選：Aster 自訂 endpoint
 ```
 
-### 3. Run the bot
+### 停止 Bot
 
-```bash
-# Paper trading (default)
-python -m aster_perpetuals_bot
-
-# Or directly
-python aster_perpetuals_bot/bot.py
-```
-
-Press **Ctrl+C** for graceful shutdown.
+按 **Ctrl+C** 即可優雅關機（會完成當前循環後才停止）。
 
 ---
 
