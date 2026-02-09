@@ -28,10 +28,11 @@ import struct
 import wave
 import array
 
-# ==================== 音效可用性檢查 ====================
-# 某些系統（例如 macOS + Python 3.14）可能沒有 pygame.mixer
-# 遊戲會自動偵測，沒有音效一樣可以正常玩！
+# ==================== 模組可用性檢查 ====================
+# Python 3.14 + pygame 2.6 可能缺少 mixer 和 font 模組
+# 遊戲會自動偵測並使用替代方案，確保一定能玩！
 SOUND_AVAILABLE = False  # 稍後在 Game.__init__ 中嘗試初始化
+FONT_AVAILABLE = False   # 稍後在 Game.__init__ 中嘗試初始化
 
 
 class DummySound:
@@ -41,6 +42,98 @@ class DummySound:
 
     def stop(self):
         pass
+
+
+class BitmapFont:
+    """
+    當 pygame.font 不可用時，用 pygame.draw 手繪簡易文字。
+    只支援英文字母、數字和基本符號，中文會顯示為 □。
+    但遊戲照樣能玩！
+    """
+
+    # 簡易 3x5 點陣字型定義（每個字元用 5 行 x 3 列的 0/1 表示）
+    GLYPHS = {
+        'A': ["111","101","111","101","101"], 'B': ["110","101","110","101","110"],
+        'C': ["111","100","100","100","111"], 'D': ["110","101","101","101","110"],
+        'E': ["111","100","110","100","111"], 'F': ["111","100","110","100","100"],
+        'G': ["111","100","101","101","111"], 'H': ["101","101","111","101","101"],
+        'I': ["111","010","010","010","111"], 'J': ["111","001","001","101","111"],
+        'K': ["101","110","100","110","101"], 'L': ["100","100","100","100","111"],
+        'M': ["101","111","111","101","101"], 'N': ["101","111","111","111","101"],
+        'O': ["111","101","101","101","111"], 'P': ["111","101","111","100","100"],
+        'Q': ["111","101","101","111","001"], 'R': ["111","101","111","110","101"],
+        'S': ["111","100","111","001","111"], 'T': ["111","010","010","010","010"],
+        'U': ["101","101","101","101","111"], 'V': ["101","101","101","101","010"],
+        'W': ["101","101","111","111","101"], 'X': ["101","101","010","101","101"],
+        'Y': ["101","101","111","010","010"], 'Z': ["111","001","010","100","111"],
+        '0': ["111","101","101","101","111"], '1': ["010","110","010","010","111"],
+        '2': ["111","001","111","100","111"], '3': ["111","001","111","001","111"],
+        '4': ["101","101","111","001","001"], '5': ["111","100","111","001","111"],
+        '6': ["111","100","111","101","111"], '7': ["111","001","001","010","010"],
+        '8': ["111","101","111","101","111"], '9': ["111","101","111","001","111"],
+        ' ': ["000","000","000","000","000"], '!': ["010","010","010","000","010"],
+        '?': ["111","001","010","000","010"], '.': ["000","000","000","000","010"],
+        ':': ["000","010","000","010","000"], '-': ["000","000","111","000","000"],
+        '+': ["000","010","111","010","000"], '=': ["000","111","000","111","000"],
+        '/': ["001","001","010","100","100"], '%': ["101","001","010","100","101"],
+        '(': ["010","100","100","100","010"], ')': ["010","001","001","001","010"],
+        ',': ["000","000","000","010","100"], '~': ["000","000","101","010","000"],
+    }
+
+    def __init__(self, scale=1):
+        """scale: 每個像素點的放大倍數（控制字體大小）"""
+        self.scale = max(1, scale)
+        self.char_w = 3 * self.scale + self.scale  # 字元寬 + 間距
+        self.char_h = 5 * self.scale
+
+    def _size(self, text):
+        """計算文字的像素寬高"""
+        w = len(text) * self.char_w
+        h = self.char_h
+        return (w, h)
+
+    def render(self, text, antialias, color, background=None):
+        """
+        模仿 pygame.font.Font.render() 的介面
+        回傳一個畫了文字的 Surface
+        """
+        text = str(text)
+        w, h = self._size(text)
+        w = max(w, 1)
+        h = max(h, 1)
+
+        if background:
+            surf = pygame.Surface((w, h))
+            surf.fill(background)
+        else:
+            surf = pygame.Surface((w, h), pygame.SRCALPHA)
+
+        s = self.scale
+        for ci, ch in enumerate(text):
+            upper = ch.upper()
+            glyph = self.GLYPHS.get(upper)
+            if glyph is None:
+                # 不支援的字元畫一個小方塊 □
+                ox = ci * self.char_w
+                pygame.draw.rect(surf, color, (ox, 0, 3 * s, 5 * s), max(1, s // 2))
+                continue
+            ox = ci * self.char_w
+            for row_i, row in enumerate(glyph):
+                for col_i, pixel in enumerate(row):
+                    if pixel == '1':
+                        pygame.draw.rect(surf, color,
+                                         (ox + col_i * s, row_i * s, s, s))
+        return surf
+
+    def get_rect(self, **kwargs):
+        """相容用，回傳空 Rect"""
+        return pygame.Rect(0, 0, 0, 0)
+
+
+def create_bitmap_font(size):
+    """根據目標 point size 建立對應 scale 的 BitmapFont"""
+    scale = max(1, size // 8)
+    return BitmapFont(scale=scale)
 
 # ==================== 遊戲設定（可以自由修改！）====================
 
@@ -649,14 +742,22 @@ class Game:
             print("🔊 音效模組載入成功！")
         except Exception as e:
             SOUND_AVAILABLE = False
-            print(f"🔇 音效模組無法載入（{e}），遊戲將以靜音模式執行")
-            print("   （不影響遊玩，一樣很好玩喔！）")
+            print(f"🔇 音效模組無法載入，遊戲將以靜音模式執行")
+
+        # 嘗試初始化字型模組
+        try:
+            pygame.font.init()
+            FONT_AVAILABLE = True
+            print("🔤 字型模組載入成功！")
+        except Exception as e:
+            FONT_AVAILABLE = False
+            print(f"🔤 字型模組無法載入，將使用點陣字型替代")
 
         self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-        pygame.display.set_caption("🐰 一二三木頭人！Red Light Green Light 🚦")
+        pygame.display.set_caption("Red Light Green Light")
         self.clock = pygame.time.Clock()
 
-        # 字型設定（嘗試使用系統字型，找不到就用預設）
+        # 字型設定
         self.font_large = None
         self.font_medium = None
         self.font_small = None
@@ -705,7 +806,15 @@ class Game:
         random.seed()  # 恢復隨機
 
     def _setup_fonts(self):
-        """設定字型 —— 嘗試找到支援中文的字型"""
+        """設定字型 —— 嘗試找到支援中文的字型，找不到就用點陣字型"""
+        if not FONT_AVAILABLE:
+            # pygame.font 不可用，使用自製點陣字型
+            self.font_large = create_bitmap_font(52)
+            self.font_medium = create_bitmap_font(36)
+            self.font_small = create_bitmap_font(26)
+            self.font_tiny = create_bitmap_font(20)
+            return
+
         # 嘗試常見的中文字型
         chinese_fonts = [
             "notosanscjk", "notosanstc", "notosanssc",
@@ -717,14 +826,17 @@ class Game:
         ]
 
         font_name = None
-        available = pygame.font.get_fonts()
-        for f in chinese_fonts:
-            for af in available:
-                if f.replace(" ", "") in af.replace(" ", ""):
-                    font_name = af
+        try:
+            available = pygame.font.get_fonts()
+            for f in chinese_fonts:
+                for af in available:
+                    if f.replace(" ", "") in af.replace(" ", ""):
+                        font_name = af
+                        break
+                if font_name:
                     break
-            if font_name:
-                break
+        except Exception:
+            pass
 
         if font_name:
             try:
@@ -732,15 +844,22 @@ class Game:
                 self.font_medium = pygame.font.SysFont(font_name, 36, bold=True)
                 self.font_small = pygame.font.SysFont(font_name, 26)
                 self.font_tiny = pygame.font.SysFont(font_name, 20)
+                return
             except Exception:
-                font_name = None
+                pass
 
-        if not font_name:
-            # 使用預設字型
+        # 使用預設字型
+        try:
             self.font_large = pygame.font.Font(None, 60)
             self.font_medium = pygame.font.Font(None, 42)
             self.font_small = pygame.font.Font(None, 30)
             self.font_tiny = pygame.font.Font(None, 24)
+        except Exception:
+            # 最終保底：使用點陣字型
+            self.font_large = create_bitmap_font(52)
+            self.font_medium = create_bitmap_font(36)
+            self.font_small = create_bitmap_font(26)
+            self.font_tiny = create_bitmap_font(20)
 
     def reset_round(self):
         """重置一輪遊戲（角色回到起點）"""
@@ -880,10 +999,12 @@ class Game:
                             0.1, math.pi - 0.1, 4)
 
         # 遊戲標題
-        self.draw_text_with_shadow("一二三 木頭人！", self.font_large,
-                                   YELLOW, 400, 150, (180, 120, 0))
-        self.draw_text_with_shadow("Red Light, Green Light", self.font_small,
-                                   WHITE, 400, 200, (100, 100, 100))
+        if FONT_AVAILABLE:
+            self.draw_text_with_shadow("一二三 木頭人！", self.font_large,
+                                       YELLOW, 400, 140, (180, 120, 0))
+        self.draw_text_with_shadow("Red Light, Green Light", self.font_medium,
+                                   YELLOW if not FONT_AVAILABLE else WHITE,
+                                   400, 190, (100, 100, 100))
 
         # 可愛的兔子
         draw_bunny(self.screen, 300, 380)
@@ -896,9 +1017,10 @@ class Game:
             self.draw_text_with_shadow("Press SPACE to Start!",
                                        self.font_medium, WHITE, 400, 460,
                                        (80, 80, 80))
-            self.draw_text_with_shadow("按空格鍵開始玩喔～",
-                                       self.font_small, PINK, 400, 510,
-                                       (150, 80, 100))
+            if FONT_AVAILABLE:
+                self.draw_text_with_shadow("按空格鍵開始玩喔～",
+                                           self.font_small, PINK, 400, 510,
+                                           (150, 80, 100))
 
         # 操作說明
         self.draw_text_with_shadow("Space / Click = Move Forward",
@@ -942,14 +1064,12 @@ class Game:
         # 上方狀態列
         status_height = 80
         if self.is_green_light:
-            status_color = (50, 180, 50, 200)
             status_text = "GO GO GO!"
-            status_chinese = "綠燈！快跑呀～"
+            status_sub = "Green Light! Run!" if not FONT_AVAILABLE else "綠燈！快跑呀～"
             text_color = WHITE
         else:
-            status_color = (220, 60, 60, 200)
             status_text = "STOP!"
-            status_chinese = "紅燈！停下來～"
+            status_sub = "Red Light! Freeze!" if not FONT_AVAILABLE else "紅燈！停下來～"
             text_color = WHITE
 
         # 半透明狀態列
@@ -974,7 +1094,7 @@ class Game:
         # 狀態文字
         self.draw_text_with_shadow(status_text, self.font_large, text_color,
                                    SCREEN_WIDTH // 2, 28, (0, 0, 0))
-        self.draw_text_with_shadow(status_chinese, self.font_small, YELLOW,
+        self.draw_text_with_shadow(status_sub, self.font_small, YELLOW,
                                    SCREEN_WIDTH // 2, 60, (100, 80, 0))
 
         # 進度條
@@ -1033,9 +1153,14 @@ class Game:
                          3, border_radius=20)
 
         self.draw_text_with_shadow("Oops!", self.font_large, ORANGE, 400, 210, BROWN)
-        self.draw_text_with_shadow("哎呀～ 被發現了！", self.font_medium, DARK_PINK, 400, 270)
-        self.draw_text_with_shadow("沒關係，再試一次！加油喔～",
-                                   self.font_small, (100, 100, 150), 400, 320)
+        if FONT_AVAILABLE:
+            self.draw_text_with_shadow("哎呀～ 被發現了！", self.font_medium, DARK_PINK, 400, 270)
+            self.draw_text_with_shadow("沒關係，再試一次！加油喔～",
+                                       self.font_small, (100, 100, 150), 400, 320)
+        else:
+            self.draw_text_with_shadow("You got caught!", self.font_medium, DARK_PINK, 400, 270)
+            self.draw_text_with_shadow("Try again! You can do it!",
+                                       self.font_small, (100, 100, 150), 400, 320)
 
         # 可愛表情符號裝飾
         draw_star(self.screen, YELLOW, 200, 180, 12)
@@ -1074,22 +1199,29 @@ class Game:
                          4, border_radius=25)
 
         # 勝利文字
-        self.draw_text_with_shadow("YOU WIN!", self.font_large, GOLD, 400, 140, BROWN)
-        self.draw_text_with_shadow("太棒了！你贏啦！耶～",
-                                   self.font_medium, DARK_PINK, 400, 200)
+        self.draw_text_with_shadow("YOU WIN!", self.font_large, GOLD, 400, 130, BROWN)
+        if FONT_AVAILABLE:
+            self.draw_text_with_shadow("太棒了！你贏啦！耶～",
+                                       self.font_medium, DARK_PINK, 400, 190)
+        else:
+            self.draw_text_with_shadow("Amazing! Great job!", self.font_medium, DARK_PINK, 400, 190)
 
         # 分數
-        score_msg = f"You won {self.score} time(s)! Amazing!"
-        self.draw_text_with_shadow(score_msg, self.font_small, PURPLE, 400, 260)
-        score_chinese = f"你已經贏了 {self.score} 次！超厲害！"
-        self.draw_text_with_shadow(score_chinese, self.font_small, ORANGE, 400, 300)
+        score_msg = f"You won {self.score} time(s)!"
+        self.draw_text_with_shadow(score_msg, self.font_small, PURPLE, 400, 250)
+        if FONT_AVAILABLE:
+            score_chinese = f"你已經贏了 {self.score} 次！超厲害！"
+            self.draw_text_with_shadow(score_chinese, self.font_small, ORANGE, 400, 290)
+        else:
+            self.draw_text_with_shadow("Super!", self.font_medium, ORANGE, 400, 290)
 
         # 重玩提示（閃爍）
         if (self.anim_timer // 25) % 2 == 0:
             self.draw_text_with_shadow("Press R to Play Again!",
                                        self.font_medium, WHITE, 400, 420, (80, 80, 80))
-            self.draw_text_with_shadow("按 R 再玩一次！",
-                                       self.font_small, PINK, 400, 470)
+            if FONT_AVAILABLE:
+                self.draw_text_with_shadow("按 R 再玩一次！",
+                                           self.font_small, PINK, 400, 470)
 
         # 裝飾的大星星
         for i in range(12):
