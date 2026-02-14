@@ -70,8 +70,6 @@ else:
 # ---------------------------------------------------------------------------
 API_KEY: str = _cfg("ASTER_API_KEY", "", str)
 API_SECRET: str = _cfg("ASTER_API_SECRET", "", str)
-
-# Optional: Custom Aster Pro API base URL.
 ASTER_API_URL: str = _cfg("ASTER_API_URL", "", str)
 
 # ---------------------------------------------------------------------------
@@ -85,16 +83,36 @@ SYMBOLS: list[str] = ["BTC/USDT:USDT", "ETH/USDT:USDT"]
 SUPPORT_RESISTANCE_METHOD: str = _cfg("SUPPORT_RESISTANCE_METHOD", "bollinger", str)
 
 # ---------------------------------------------------------------------------
-# Timeframe & Polling  (HIGH-FREQUENCY: 1m candles, 10s polling)
+# Order Type: "limit" (maker, lower fees) or "market" (taker)
 # ---------------------------------------------------------------------------
-TIMEFRAME: str = _cfg("TIMEFRAME", "1m", str)
+ORDER_TYPE: str = _cfg("ORDER_TYPE", "limit", str).lower()
+
+# Limit order offset: how far from current price to place the limit order
+# e.g. 0.1 means ±0.1% from last price
+LIMIT_ORDER_OFFSET_PCT: float = _cfg("LIMIT_ORDER_OFFSET_PCT", 0.1, float)
+
+# ---------------------------------------------------------------------------
+# Fee Configuration
+# ---------------------------------------------------------------------------
+FEE_RATE: float = _cfg("FEE_RATE", 0.0004, float)        # 0.04% per side
+SLIPPAGE_ESTIMATE: float = _cfg("SLIPPAGE_ESTIMATE", 0.001, float)  # 0.1%
+
+# ---------------------------------------------------------------------------
+# Minimum Take-Profit (must cover fees + slippage to avoid net loss)
+# ---------------------------------------------------------------------------
+MIN_TAKE_PROFIT_PCT: float = _cfg("MIN_TAKE_PROFIT_PCT", 0.3, float)  # 0.3%
+
+# ---------------------------------------------------------------------------
+# Timeframe & Polling (5m candles, 30s polling)
+# ---------------------------------------------------------------------------
+TIMEFRAME: str = _cfg("TIMEFRAME", "5m", str)
 OHLCV_LIMIT: int = _cfg("OHLCV_LIMIT", 100, int)
-POLL_INTERVAL_SEC: int = _cfg("POLL_INTERVAL_SEC", 10, int)
+POLL_INTERVAL_SEC: int = _cfg("POLL_INTERVAL_SEC", 30, int)
 
 # ---------------------------------------------------------------------------
 # Leverage & Margin
 # ---------------------------------------------------------------------------
-LEVERAGE: int = _cfg("LEVERAGE", 5, int)
+LEVERAGE: int = _cfg("LEVERAGE", 3, int)
 MARGIN_TYPE: str = "ISOLATED"
 
 # ---------------------------------------------------------------------------
@@ -108,17 +126,23 @@ BB_STD_DEV: float = _cfg("BB_STD_DEV", 2.0, float)
 # ---------------------------------------------------------------------------
 VOLUME_AVG_PERIOD: int = _cfg("VOLUME_AVG_PERIOD", 20, int)
 VOLUME_THRESHOLD_PCT: float = _cfg("VOLUME_THRESHOLD_PCT", 30.0, float)
-# Volume must be > avg * (1 + VOLUME_THRESHOLD_PCT/100)
+
+# ---------------------------------------------------------------------------
+# ATR Filter — only trade when volatility is above average
+# ---------------------------------------------------------------------------
+ATR_PERIOD: int = _cfg("ATR_PERIOD", 14, int)
+ATR_THRESHOLD_PCT: float = _cfg("ATR_THRESHOLD_PCT", 30.0, float)
+# Only enter trades when current ATR > ATR_avg * (1 + ATR_THRESHOLD_PCT/100)
 
 # ---------------------------------------------------------------------------
 # RSI Parameters
 # ---------------------------------------------------------------------------
 RSI_PERIOD: int = _cfg("RSI_PERIOD", 14, int)
-RSI_LONG_MAX: float = _cfg("RSI_LONG_MAX", 50.0, float)   # Long: RSI < 50
-RSI_SHORT_MIN: float = _cfg("RSI_SHORT_MIN", 50.0, float)  # Short: RSI > 50
+RSI_LONG_MAX: float = _cfg("RSI_LONG_MAX", 50.0, float)
+RSI_SHORT_MIN: float = _cfg("RSI_SHORT_MIN", 50.0, float)
 
 # ---------------------------------------------------------------------------
-# EMA Parameters (kept for backward compatibility / alternative strategy)
+# EMA Parameters (kept for backward compatibility)
 # ---------------------------------------------------------------------------
 EMA_SHORT_PERIOD: int = _cfg("EMA_SHORT_PERIOD", 9, int)
 EMA_LONG_PERIOD: int = _cfg("EMA_LONG_PERIOD", 21, int)
@@ -134,21 +158,23 @@ RISK_PER_TRADE_PCT: float = _cfg("RISK_PER_TRADE_PCT", 0.3, float)
 TRAILING_STOP_INITIAL_PCT: float = _cfg("TRAILING_STOP_INITIAL_PCT", 0.5, float)
 TRAILING_STOP_CALLBACK_PCT: float = _cfg("TRAILING_STOP_CALLBACK_PCT", 0.3, float)
 
-# Legacy fixed SL/TP (used as fallback if trailing stop fails)
+# Fixed SL/TP (fallback)
 STOP_LOSS_PCT: float = _cfg("STOP_LOSS_PCT", 0.5, float)
 TAKE_PROFIT_PCT: float = _cfg("TAKE_PROFIT_PCT", 1.5, float)
 
 # ---------------------------------------------------------------------------
 # Maximum Hold Time
 # ---------------------------------------------------------------------------
-MAX_HOLD_SECONDS: int = _cfg("MAX_HOLD_SECONDS", 3600, int)  # 1 hour max
+MAX_HOLD_SECONDS: int = _cfg("MAX_HOLD_SECONDS", 3600, int)
 
 # ---------------------------------------------------------------------------
-# OpenClaw Supervisor — high-frequency limits
+# OpenClaw Supervisor
 # ---------------------------------------------------------------------------
 MAX_CONSECUTIVE_LOSSES: int = _cfg("MAX_CONSECUTIVE_LOSSES", 5, int)
 MAX_TOTAL_LOSS_PCT: float = _cfg("MAX_TOTAL_LOSS_PCT", 2.0, float)
 MAX_TRADES_PER_HOUR: int = _cfg("MAX_TRADES_PER_HOUR", 40, int)
+MAX_DAILY_FEE_PCT: float = _cfg("MAX_DAILY_FEE_PCT", 2.0, float)
+MIN_NET_WIN_RATE_PCT: float = _cfg("MIN_NET_WIN_RATE_PCT", 55.0, float)
 
 # ---------------------------------------------------------------------------
 # Paper Trading — simulated balance

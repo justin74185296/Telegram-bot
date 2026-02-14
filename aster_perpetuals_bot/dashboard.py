@@ -333,13 +333,15 @@ tbody tr:hover { background: var(--surface2); }
     <div class="card">
       <div class="card-title">使用策略</div>
       <div class="strategy-box">
-        <strong>布林帶反彈 + 成交量確認 + RSI 過濾</strong><br>
-        <code>做多</code>：價格 &lt; 布林下軌（支撐帶）+ 成交量 &gt; 均量 30% + RSI &lt; 50<br>
-        <code>做空</code>：價格 &gt; 布林上軌（壓力帶）+ 成交量 &gt; 均量 30% + RSI &gt; 50<br>
-        <code>平倉</code>：追蹤止損觸發 / 價格回到中軌 / 最長持倉 1 小時<br><br>
-        時間框架：<code>1 分鐘</code> &nbsp; 輪詢：<code>每 10 秒</code> &nbsp; 槓桿：<code>5x 逐倉</code><br>
-        單筆風險：<code>0.3%</code> &nbsp; 追蹤止損：<code>初始 0.5% / 跟隨 0.3%</code><br>
-        布林帶：<code>期數 20 / 偏差 2</code> &nbsp; 風控：<code>虧損 &lt;2% / 交易 &lt;40/小時</code>
+        <strong>布林帶反彈 + 限價單 + 手續費優化</strong><br>
+        <code>做多</code>：價格 &lt; 布林下軌 + 成交量 &gt; 均量 30% + RSI &lt; 50 + ATR 夠高<br>
+        <code>做空</code>：價格 &gt; 布林上軌 + 成交量 &gt; 均量 30% + RSI &gt; 50 + ATR 夠高<br>
+        <code>過濾</code>：預期獲利 &lt; 0.3% + 手續費 → 跳過（避免淨虧）<br>
+        <code>平倉</code>：追蹤止損 / 價格回到中軌 / 最長持倉 1 小時<br><br>
+        訂單類型：<code>限價單 ±0.1%</code> &nbsp; 手續費：<code>0.04%/側</code><br>
+        時間框架：<code>5 分鐘</code> &nbsp; 輪詢：<code>每 30 秒</code> &nbsp; 槓桿：<code>3x 逐倉</code><br>
+        最小止盈：<code>0.3%</code> &nbsp; 追蹤止損：<code>初始 0.5% / 跟隨 0.3%</code><br>
+        風控：<code>淨勝率 &gt;55%</code> / <code>日手續費 &lt;2%</code> / <code>總虧 &lt;2%</code>
       </div>
     </div>
   </div>
@@ -459,8 +461,11 @@ function render(d) {
   $('totalPnlPct').className = 'card-sub ' + pnlClass(pnl);
 
   // -- 勝率 --
-  $('winRate').textContent = d.openclaw.total_trades > 0 ? fmt(d.openclaw.win_rate,1) + '%' : '--';
-  $('winLoss').textContent = `贏：${d.openclaw.wins} / 輸：${d.openclaw.losses}（共 ${d.openclaw.total_trades} 筆）`;
+  const netWr = d.openclaw.net_win_rate || d.openclaw.win_rate;
+  $('winRate').textContent = d.openclaw.total_trades > 0 ? fmt(netWr,1) + '%' : '--';
+  $('winRate').className = 'card-value ' + (netWr >= 55 ? 'positive' : netWr > 0 ? 'negative' : 'neutral');
+  const feeStr = d.openclaw.total_fees ? `  手續費：${fmt(d.openclaw.total_fees,2)}` : '';
+  $('winLoss').textContent = `贏：${d.openclaw.wins} / 輸：${d.openclaw.losses}（共 ${d.openclaw.total_trades} 筆）${feeStr}`;
 
   // -- 風控監督 --
   const paused = d.openclaw.is_paused;

@@ -376,6 +376,9 @@ def _sync_openclaw(monitor: OpenClawMonitor) -> None:
             wins=wins,
             losses=losses,
             trades_this_hour=monitor.trades_this_hour,
+            total_fees=monitor.total_fees,
+            daily_fees=monitor.daily_fee_total,
+            net_win_rate=monitor.net_win_rate,
         )
     except Exception:
         logger.debug("Failed to sync openclaw", exc_info=True)

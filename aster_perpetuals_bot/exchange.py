@@ -246,27 +246,109 @@ def create_market_order(
     amount: float,
     params: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """
-    Place a market order.
-
-    Parameters
-    ----------
-    symbol : str  e.g. "BTC/USDT:USDT"
-    side   : str  "buy" or "sell"
-    amount : float  quantity in base asset
-    params : dict   extra exchange-specific params (e.g. reduceOnly)
-    """
+    """Place a market order (taker)."""
     exchange = get_exchange()
     params = params or {}
     order = exchange.create_order(symbol, "market", side, amount, None, params)
     logger.info(
         "Market %s order placed: %s  qty=%.6f  id=%s",
-        side.upper(),
-        symbol,
-        amount,
-        order.get("id"),
+        side.upper(), symbol, amount, order.get("id"),
     )
     return order
+
+
+@_retry
+def create_limit_order(
+    symbol: str,
+    side: str,
+    amount: float,
+    price: float,
+    params: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """
+    Place a limit order (maker — lower fees).
+
+    Parameters
+    ----------
+    symbol : str   e.g. "BTC/USDT:USDT"
+    side   : str   "buy" or "sell"
+    amount : float quantity in base asset
+    price  : float limit price
+    params : dict  extra params (e.g. reduceOnly, timeInForce)
+    """
+    exchange = get_exchange()
+    params = params or {}
+    # Ensure GTC (Good Til Cancelled) unless caller overrides
+    if "timeInForce" not in params:
+        params["timeInForce"] = "GTC"
+    order = exchange.create_order(symbol, "limit", side, amount, price, params)
+    logger.info(
+        "Limit %s order placed: %s  qty=%.6f  price=%.2f  id=%s",
+        side.upper(), symbol, amount, price, order.get("id"),
+    )
+    return order
+
+
+def create_entry_order(
+    symbol: str,
+    side: str,
+    amount: float,
+    params: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """
+    Place an entry order using the configured ORDER_TYPE.
+
+    If ORDER_TYPE='limit', places a limit order at current price ± offset.
+    If ORDER_TYPE='market', places a market order.
+    """
+    from aster_perpetuals_bot.config import ORDER_TYPE, LIMIT_ORDER_OFFSET_PCT
+
+    if ORDER_TYPE == "limit":
+        last = get_last_price(symbol)
+        offset = LIMIT_ORDER_OFFSET_PCT / 100.0
+        # Buy slightly below current price, sell slightly above
+        if side == "buy":
+            limit_price = round(last * (1 - offset), 2)
+        else:
+            limit_price = round(last * (1 + offset), 2)
+        logger.info(
+            "Limit entry: %s %s  last=%.2f  offset=%.2f%%  limit_price=%.2f",
+            side, symbol, last, LIMIT_ORDER_OFFSET_PCT, limit_price,
+        )
+        return create_limit_order(symbol, side, amount, limit_price, params)
+    else:
+        return create_market_order(symbol, side, amount, params)
+
+
+def create_exit_order(
+    symbol: str,
+    side: str,
+    amount: float,
+) -> dict[str, Any]:
+    """
+    Place an exit (close) order using configured ORDER_TYPE.
+
+    Always sets reduceOnly=True.
+    """
+    from aster_perpetuals_bot.config import ORDER_TYPE, LIMIT_ORDER_OFFSET_PCT
+
+    params: dict[str, Any] = {"reduceOnly": True}
+
+    if ORDER_TYPE == "limit":
+        last = get_last_price(symbol)
+        offset = LIMIT_ORDER_OFFSET_PCT / 100.0
+        # Sell (close long) slightly above, buy (close short) slightly below
+        if side == "sell":
+            limit_price = round(last * (1 + offset), 2)
+        else:
+            limit_price = round(last * (1 - offset), 2)
+        logger.info(
+            "Limit exit: %s %s  last=%.2f  limit_price=%.2f",
+            side, symbol, last, limit_price,
+        )
+        return create_limit_order(symbol, side, amount, limit_price, params)
+    else:
+        return create_market_order(symbol, side, amount, params)
 
 
 @_retry
@@ -412,7 +494,7 @@ def cancel_all_orders(symbol: str) -> None:
 @_retry
 def close_position(symbol: str, position: dict[str, Any]) -> dict[str, Any]:
     """
-    Market-close an existing position.
+    Close an existing position using the configured order type.
 
     Determines the closing side automatically from the position dict.
     """
@@ -421,11 +503,15 @@ def close_position(symbol: str, position: dict[str, Any]) -> dict[str, Any]:
     close_side = "sell" if pos_side == "long" else "buy"
 
     cancel_all_orders(symbol)
-    order = create_market_order(
-        symbol, close_side, contracts, {"reduceOnly": True}
-    )
-    logger.info("Position closed on %s via market %s", symbol, close_side)
+    order = create_exit_order(symbol, close_side, contracts)
+    logger.info("Position closed on %s via %s %s", symbol, close_side,
+                "limit" if _is_limit_mode() else "market")
     return order
+
+
+def _is_limit_mode() -> bool:
+    from aster_perpetuals_bot.config import ORDER_TYPE
+    return ORDER_TYPE == "limit"
 
 
 @_retry

@@ -92,6 +92,9 @@ class BotState:
         self.win_count: int = 0
         self.loss_count: int = 0
         self.trades_this_hour: int = 0
+        self.total_fees: float = 0.0
+        self.daily_fees: float = 0.0
+        self.net_win_rate: float = 0.0
 
         # Errors / log buffer (last N messages)
         self.recent_logs: list[str] = []
@@ -138,6 +141,9 @@ class BotState:
         wins: int,
         losses: int,
         trades_this_hour: int = 0,
+        total_fees: float = 0.0,
+        daily_fees: float = 0.0,
+        net_win_rate: float = 0.0,
     ) -> None:
         with self._lock:
             self.total_pnl = total_pnl
@@ -146,6 +152,9 @@ class BotState:
             self.win_count = wins
             self.loss_count = losses
             self.trades_this_hour = trades_this_hour
+            self.total_fees = total_fees
+            self.daily_fees = daily_fees
+            self.net_win_rate = net_win_rate
 
     def add_log(self, message: str) -> None:
         with self._lock:
@@ -220,6 +229,9 @@ class BotState:
                     "total_trades": total_trades,
                     "win_rate": round(win_rate, 1),
                     "trades_this_hour": self.trades_this_hour,
+                    "total_fees": round(self.total_fees, 4),
+                    "daily_fees": round(self.daily_fees, 4),
+                    "net_win_rate": round(self.net_win_rate, 1),
                 },
                 "trades": [
                     {
