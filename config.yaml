@@ -1,0 +1,76 @@
+# ============================================================
+#  Aster Perpetuals Bot — config.yaml
+#
+#  Priority: env var > config.yaml > code default
+# ============================================================
+
+# --- Trading Mode ---
+TRADING_MODE: "paper"                   # "paper" or "live"
+
+# --- Strategy ---
+SUPPORT_RESISTANCE_METHOD: "bollinger"  # "bollinger" or "ema"
+
+# --- Order Type (KEY CHANGE: limit orders to save on fees) ---
+ORDER_TYPE: "limit"                     # "limit" (maker) or "market" (taker)
+LIMIT_ORDER_OFFSET_PCT: 0.1            # Limit price offset ±0.1% from current
+
+# --- Fee Configuration ---
+FEE_RATE: 0.0004                        # 0.04% per side (Aster/Binance maker)
+SLIPPAGE_ESTIMATE: 0.001                # 0.1% estimated slippage
+
+# --- Minimum Take-Profit (must cover 2×fee + slippage) ---
+MIN_TAKE_PROFIT_PCT: 0.3               # 0.3% minimum net profit per trade
+
+# --- Timeframe & Polling (5m candles, 30s check) ---
+TIMEFRAME: "5m"
+OHLCV_LIMIT: 100
+POLL_INTERVAL_SEC: 30
+
+# --- Leverage ---
+LEVERAGE: 3                             # Reduced from 5x to 3x
+# MARGIN_TYPE is always ISOLATED
+
+# --- Bollinger Bands ---
+BB_PERIOD: 20
+BB_STD_DEV: 2.0
+
+# --- Volume Filter ---
+VOLUME_AVG_PERIOD: 20
+VOLUME_THRESHOLD_PCT: 30.0
+
+# --- ATR Filter (skip low-volatility trades) ---
+ATR_PERIOD: 14
+ATR_THRESHOLD_PCT: 30.0                # ATR must be >30% above average
+
+# --- RSI ---
+RSI_PERIOD: 14
+RSI_LONG_MAX: 50.0
+RSI_SHORT_MIN: 50.0
+
+# --- Risk Management ---
+RISK_PER_TRADE_PCT: 0.3                # Risk 0.3% of balance per trade
+
+# --- Trailing Stop ---
+TRAILING_STOP_INITIAL_PCT: 0.5
+TRAILING_STOP_CALLBACK_PCT: 0.3
+
+# --- Fallback Fixed SL/TP ---
+STOP_LOSS_PCT: 0.5
+TAKE_PROFIT_PCT: 1.5
+
+# --- Maximum Hold Time ---
+MAX_HOLD_SECONDS: 3600                  # 1 hour max
+
+# --- OpenClaw Supervisor ---
+MAX_CONSECUTIVE_LOSSES: 5
+MAX_TOTAL_LOSS_PCT: 2.0                 # Pause if net loss > 2%
+MAX_TRADES_PER_HOUR: 40
+MAX_DAILY_FEE_PCT: 2.0                  # Pause if daily fees > 2% of balance
+MIN_NET_WIN_RATE_PCT: 55.0              # Pause if net win rate < 55% (after 10+ trades)
+
+# --- Paper Trading ---
+PAPER_INITIAL_BALANCE: 10000.0
+
+# --- Dashboard ---
+DASHBOARD_HOST: "0.0.0.0"
+DASHBOARD_PORT: 8080
